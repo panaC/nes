@@ -1,5 +1,10 @@
 
 #include <iostream>
+
+#include <cppunit/CompilerOutputter.h>
+#include <cppunit/extensions/TestFactoryRegistry.h>
+#include <cppunit/ui/text/TestRunner.h>
+
 #include "cpu.h"
 
 int main(int argc, char **argv) {
@@ -26,7 +31,14 @@ int main(int argc, char **argv) {
   p.unused = 1; // this flag is always 1
   p.N = 1;
 
+  registers.p = p;
+
   std::cout << "p: " << std::bitset<8>(p.value) << std::endl;
+
+  std::cout << "registers : " << std::endl;
+  std::cout << "P=" << std::hex << p.value << std::endl;
+  std::cout << "PC=" << std::hex << registers.pc.value << std::endl;
+  std::cout << std::endl;
 
  
   return 0;

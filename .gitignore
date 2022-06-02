@@ -36,3 +36,5 @@ nes
 *.dSYM
 
 **/.*.swp
+
+cppunit

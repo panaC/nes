@@ -4,7 +4,7 @@ CC = g++
 # compiler flags:
 #  -g     - this flag adds debugging information to the executable file
 #  -Wall  - this flag is used to turn on most compiler warnings
-CFLAGS  = -g -Wall -std=c++20 -stdlib=libc++ 
+CFLAGS  = -g -Wall -std=c++20 -stdlib=libc++ -L./cppunit/src/cppunit/.libs -lcppunit-1.15.2 -I ./cppunit/include
 
 # The build target 
 TARGET = nes
