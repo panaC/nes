@@ -12,10 +12,11 @@ TARGET = nes
 RM = rm 
 
 SRC_DIR= src/
-SRC_FILE= main.cpp
 OBJ_DIR = obj/
 
-OBJ = $(SRC:.c=OBJ_DIR/.o)
+SRC_FILE= main.cpp
+
+OBJ = $(SRC:.c=OBJ_DIR:.o)
 
 SRC = $(addprefix $(SRC_DIR), $(SRC_FILE))
 
