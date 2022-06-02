@@ -12,9 +12,10 @@ TARGET = nes
 RM = rm 
 
 SRC_DIR= src/
-SRC_FILE= main.c
+SRC_FILE= main.cpp
+OBJ_DIR = obj/
 
-OBJ = $(SRC:.c=.o)
+OBJ = $(SRC:.c=OBJ_DIR/.o)
 
 SRC = $(addprefix $(SRC_DIR), $(SRC_FILE))
 
@@ -27,6 +28,7 @@ $(TARGET): $(OBJ)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJ)
 
 clean:
-	$(RM) $(TARGET)
+	$(RM) -f $(TARGET)
+	$(RM) -rf $(OBJ_DIR)
 
 .PHONY: all clean 
