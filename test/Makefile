@@ -5,17 +5,20 @@ CC = g++
 #  -g     - this flag adds debugging information to the executable file
 #  -Wall  - this flag is used to turn on most compiler warnings
 
-CFLAGS = -g -Wall -std=c++20 -stdlib=libc++
+CPPUNIT = /Users/edrlab/Documents/lib/cppuniot
+LDFLAGS = -L../lib -lcppunit
+CFLAGS = -g -Wall -std=c++20 -stdlib=libc++ -I$(CPPUNIT)/include 
 
 # The build target 
-TARGET = nes
+TARGET = test
 
 RM = rm 
 
 SRC_DIR= src/
 OBJ_DIR = obj/
 
-SRC_FILE= main.cpp
+SRC_FILE= main.cpp \
+					moneyTest.cpp
 
 OBJ = $(SRC:.c=OBJ_DIR:.o)
 

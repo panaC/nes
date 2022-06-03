@@ -13,3 +13,10 @@
 - https://www.nesdev.com/6502_cpu.txt
 
 
+## test
+
+http://cppunit.sourceforge.net/doc/cvs/index.html
+https://www.freedesktop.org/wiki/Software/cppunit/
+
+see test/
+
