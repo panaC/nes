@@ -2,6 +2,7 @@
 #include "Cpu.h"
 #include "../src/cpu.h"
 #include <stdio.h> 
+#include <fmt/core.h>
 
 // Registers the fixture into the 'registry'
 CPPUNIT_TEST_SUITE_REGISTRATION( Cpu );
@@ -46,4 +47,6 @@ Cpu::bitwise()
   registers.p.N = 1;
 
   CPPUNIT_ASSERT(registers.p.value == 0b10100000);
+
+  fmt::print("bitwise test {}", registers.pc.value);
 }

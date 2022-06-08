@@ -6,8 +6,9 @@ CC = g++
 #  -Wall  - this flag is used to turn on most compiler warnings
 
 CPPUNIT = /Users/edrlab/Documents/lib/cppunit
-LDFLAGS = -L../lib -lcppunit
-CFLAGS = -g -Wall -std=c++20 -stdlib=libc++ $(LDFLAGS) -I$(CPPUNIT)/include
+FMT = /Users/edrlab/Documents/lib/fmt/
+LDFLAGS = -L../lib -lcppunit -lfmt
+CFLAGS = -g -Wall -std=c++20 -stdlib=libc++ $(LDFLAGS) -I$(CPPUNIT)/include -I$(FMT)/include
 
 # The build target 
 TARGET = test
