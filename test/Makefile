@@ -18,7 +18,7 @@ SRC_DIR= ./
 OBJ_DIR = obj/
 
 SRC_FILE= main.cpp \
-					moneyTest.cpp
+					Cpu.cpp
 
 OBJ = $(SRC:.c=OBJ_DIR:.o)
 

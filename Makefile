@@ -33,4 +33,8 @@ clean:
 	$(RM) -f $(TARGET)
 	$(RM) -rf $(OBJ_DIR)
 
+re: 
+	make clean
+	make all
+
 .PHONY: all clean 
