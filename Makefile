@@ -5,9 +5,8 @@ CC = g++
 #  -g     - this flag adds debugging information to the executable file
 #  -Wall  - this flag is used to turn on most compiler warnings
 
-FMT = /Users/edrlab/Documents/lib/fmt/
 LDFLAGS = -L./lib -lfmt
-CFLAGS = -g -Wall -std=c++20 -stdlib=libc++ $(LDFLAGS) -I$(FMT)/include
+CFLAGS = -g -Wall -std=c++20 -stdlib=libc++ $(LDFLAGS) -I./include
 
 # The build target 
 TARGET = nes

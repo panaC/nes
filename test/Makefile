@@ -5,10 +5,8 @@ CC = g++
 #  -g     - this flag adds debugging information to the executable file
 #  -Wall  - this flag is used to turn on most compiler warnings
 
-CPPUNIT = /Users/edrlab/Documents/lib/cppunit
-FMT = /Users/edrlab/Documents/lib/fmt/
 LDFLAGS = -L../lib -lcppunit -lfmt
-CFLAGS = -g -Wall -std=c++20 -stdlib=libc++ $(LDFLAGS) -I$(CPPUNIT)/include -I$(FMT)/include
+CFLAGS = -g -Wall -std=c++20 -stdlib=libc++ $(LDFLAGS) -I../include
 
 # The build target 
 TARGET = test
