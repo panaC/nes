@@ -1,24 +1,5 @@
 #include "cpu.h"
 
-void check_flags_with_acc(t_registers* registers) {
-
-  uint8_t acc = registers->a;
-
-  if (acc == 0)
-    registers->Z = 1;
-  else
-    registers->Z = 0;
-
-  if ((acc & 0x80) >> 7 == 1)
-    registers->N = 1;
-  else
-    registers->N = 0;
-
-  // overflow flag ?
-  // carry flag ?
-
-}
-
 void adc(t_cpu* cpu, uint16_t addr) {
 
   cpu->registers.a += cpu->memory[addr] + (uint8_t) cpu->registers.p.C;
@@ -130,16 +111,55 @@ void clv(t_cpu* cpu, uint16_t unused) {
   cpu->registers.p.V = 0;
 }
 
+void compare(t_registers* registers, uint16_t v1, uint16_t v2) {
+
+  int8_t res = v1 - v2;
+
+  if (acc == 0)
+    registers->Z = 1;
+  else
+    registers->Z = 0;
+
+  if ((acc & 0x80) >> 7 == 1)
+    registers->N = 1;
+  else
+    registers->N = 0;
+
+  if (acc >= 0)
+    registers->C = 1;
+  else
+    registers->C = 0;
+}
+
 void cmp(t_cpu* cpu, uint16_t addr) {
 
-  cpu->registers.a = cpu->memory[addr];
-
-  check_flags_with_acc();
+  compare(registers, cpu->registers->a, cpu->memory[addr]);
 }
 
 void cpx(t_cpu* cpu, uint16_t addr) {
 
-  cpu->registers.a = cpu->memory[addr];
-
-  check_flags_with_acc();
+  compare(registers, cpu->registers->x, cpu->memory[addr]);
 }
+
+void cpy(t_cpu* cpu, uint16_t addr) {
+
+  compare(registers, cpu->registers->y, cpu->memory[addr]);
+}
+
+void dec(t_cpu* cpu, uint16_t addr) {
+  --cpu->memory[addr];
+}
+
+void dex(t_cpu* cpu, uint16_t addr) {
+  --cpu->registers->x;
+}
+
+void dey(t_cpu* cpu, uint16_t addr) {
+  --cpu->registers->y;
+}
+
+void eor(t_cpu* cpu, uint16_t addr) {
+
+  cpu->registers->a ^= cpu->memory[addr];
+}
+
