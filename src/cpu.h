@@ -1,3 +1,5 @@
+#ifndef CPU_H
+#define CPU_H
 
 #include <stdint.h>
 
@@ -31,7 +33,7 @@ union u_p {
   };
 };
 
-struct s_registers {
+typedef struct s_registers {
 
   u_pc pc;
 
@@ -39,8 +41,31 @@ struct s_registers {
 
   u_p p;
 
+  uint8_t a;
+
   uint8_t x;
 
   uint8_t y;
 
-};
+} t_registers;
+
+typedef struct s_cpu {
+
+  uint8_t* memory;
+
+  struct s_registers registers;
+
+} t_cpu;
+
+typedef enum e_mode {
+  immediate,
+  zero_page,
+  zero_page_x,
+  absolute,
+  absolute_x,
+  absolute_y,
+  indirect_x,
+  indirect_y,
+} t_e_mode;
+
+#endif

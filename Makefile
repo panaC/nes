@@ -16,7 +16,8 @@ RM = rm
 SRC_DIR= src/
 OBJ_DIR = obj/
 
-SRC_FILE= main.cpp
+SRC_FILE= main.cpp \
+#					cpu.cpp
 
 OBJ = $(SRC:.c=OBJ_DIR:.o)
 
