@@ -1,0 +1,39 @@
+
+6502
+
+- little endian
+lsb first
+
+16 bit address bus - 64Kb
+
+
+=== some links ===
+
+https://github.com/yizhang82/neschan
+
+https://www.nesdev.org/wiki/Nesdev_Wiki
+
+-> CPU
+https://www.nesdev.org/6502_cpu.txt
+https://www.nesdev.org/wiki/CPU_ALL#CPU
+
+-> registers
+https://web.archive.org/web/20210501031403/http://www.obelisk.me.uk/6502/registers.html
+https://www.nesdev.org/6502_cpu.txt -> registers part
+
+
+-> instructions
+https://www.nesdev.org/wiki/6502_instructions
+https://web.archive.org/web/20210514033221/http://obelisk.me.uk/6502/instructions.html
+
+
+-> addressing mode
+https://www.nesdev.org/wiki/CPU_addressing_modes
+https://web.archive.org/web/20210514044406/http://obelisk.me.uk/6502/addressing.html
+
+-> Emulator tests
+https://www.nesdev.org/wiki/Emulator_tests
+https://github.com/christopherpow/nes-test-roms/tree/master/nes_instr_test
+
+
+
