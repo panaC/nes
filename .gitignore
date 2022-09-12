@@ -37,11 +37,5 @@ nes
 
 **/.*.swp
 
-cppunit
-fmt
 include
-lib
-
-test/test
-
-
+.vscode

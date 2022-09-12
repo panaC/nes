@@ -7,6 +7,52 @@ lsb first
 16 bit address bus - 64Kb
 
 
+
+
+
+
+
+==== 1er version ===
+comment démarrer le module cpu ?
+
+MEM = array de x bytes avec le programme qui démarre à start
+MEM doit être une mémoire virtuelle mappé vers une mémoire physique puisque que la mémoire du 6502 de la nes est mirroiré et mappé vers le PPU et APU et controlleurs
+MEM: *uint_8[size] size = 64Kb sur le 6502
+
+cpu.execute(MEM, SIZE, start=0(PC=start));
+
+// retourne la memoire mise à jour.
+
+
+// tester les programme dans le main test avec assert
+===
+
+=== 2 eme version ===
+
+implémenter les IT et SP stack pointer
+
+=== 3 eme version === 
+
+parser les boot NES et executer les tests acceptances
+
+
+=== 4 eme version ===
+
+déboguer avec les vrais ROM NEs
+===
+
+
+
+
+
+
+
+
+
+
+
+
+
 === some links ===
 
 https://github.com/yizhang82/neschan

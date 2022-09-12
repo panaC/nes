@@ -1,16 +1,17 @@
 #ifndef CPU_H
 #define CPU_H
 
+#include <stddef.h>
 #include <stdint.h>
 
-union u_pc {
+union u16 {
 
   uint16_t value;
 
   struct {
 
-    uint8_t pcl;
-    uint8_t pch;
+    uint8_t lsb;
+    uint8_t msb;
   };
 };
 
@@ -20,28 +21,27 @@ union u_p {
 
   struct { 
 
-    unsigned C: 1;
-    unsigned Z: 1;
-    unsigned D: 1;
-    unsigned I: 1;
-
-    unsigned B: 1;
+    unsigned C: 1; // carry
+    unsigned Z: 1; // Zero
+    unsigned D: 1; // Decimal
+    unsigned I: 1; // Interruption
+    unsigned B: 1; // break
     unsigned unused: 1;
-    unsigned V: 1;
-    unsigned N: 1;
+    unsigned V: 1; // overflow
+    unsigned N: 1; // negative
 
   };
 };
 
 typedef struct s_registers {
 
-  u_pc pc;
+  uint16_t pc;
 
   uint8_t sp;
 
-  u_p p;
+  union u_p p;
 
-  uint8_t a;
+  int8_t a; // not unsigned 
 
   uint8_t x;
 
@@ -49,23 +49,29 @@ typedef struct s_registers {
 
 } t_registers;
 
-typedef struct s_cpu {
+// typedef struct s_cpu {
 
-  uint8_t* memory;
+//   uint8_t* memory;
 
-  struct s_registers registers;
+//   struct s_registers registers;
 
-} t_cpu;
+// } t_cpu;
 
+// is it usefull ? 
 typedef enum e_mode {
-  immediate,
   zero_page,
   zero_page_x,
+  zero_page_y,
   absolute,
   absolute_x,
   absolute_y,
   indirect_x,
   indirect_y,
 } t_e_mode;
+
+#define MEM_SIZE 1024 // 64KB // 2 ^16 // 65536
+typedef uint8_t* t_mem;
+
+void run(t_mem *memory, size_t size, uint16_t start);
 
 #endif
