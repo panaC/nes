@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include "cpu.h"
 
+// todo:  global variable
+// handle State Machine with cycle
+uint32_t cycle = 0; 
+
 void run(t_mem *memory, size_t size, uint16_t start) {
 
   // pc = start;
@@ -88,34 +92,39 @@ int adc_opcode(t_registers *reg, t_mem *memory) {
     reg->a = (int8_t)lastValue;
 
     reg->pc += 2;
+    cycle += 2;
 
     break;
   case 0x65:
     lastValue = reg->a + addressMode(zero_page, addr, reg, memory) + reg->p.C;
     reg->a = (int8_t)lastValue;
 
-    reg->pc += 3;
+    reg->pc += 2;
+    cycle += 3;
 
     break;
   case 0x75: 
     lastValue = reg->a + addressMode(zero_page_x, addr, reg, memory) + reg->p.C;
 
-    reg->pc += 4;
+    reg->pc += 2;
+    cycle += 4;
 
     break;
   case 0x6d: 
     lastValue = reg->a + addressMode(absolute, addr, reg, memory) + reg->p.C;
 
-    reg->pc += 4;
+    reg->pc += 3;
+    cycle += 4;
 
     break;
   case 0x7d: 
     lastValue = reg->a + addressMode(absolute_x, addr, reg, memory) + reg->p.C;
 
+    req->pc += 3;
     if (addr.value & 0x00ff + reg.x > 0xff)
-      reg->pc += 5;
+      cycle += 5;
     else
-      reg->pc += 4;
+      cycle += 4;
     // +1 if page crossed // how to do this ?
     // page crossed : 
     // $3000 and $30FF -> valeur de x entre 0 et ff page de page crossed
@@ -131,17 +140,19 @@ int adc_opcode(t_registers *reg, t_mem *memory) {
   case 0x79: 
     lastValue = reg->a + addressMode(absolute_y, addr, reg, memory) + reg->p.C;
 
+    req->pc += 3;
     if (addr.value & 0x00ff + reg.x > 0xff)
-      reg->pc += 5;
+      cycle += 5;
     else
-      reg->pc += 4;
+      cycle += 4;
 
     break;
 
    case 0x61: 
     lastValue = reg->a + addressMode(indirect_x, addr, reg, memory) + reg->p.C;
 
-    reg->pc += 6;
+    reg->pc += 2;
+    cycle += 6
 
     break; 
    case 0x71: 
@@ -153,7 +164,8 @@ int adc_opcode(t_registers *reg, t_mem *memory) {
     // not so easy the address generation is done in function addressMode
     // TODO implement this!!
 
-    reg->pc += 5;
+    reg->pc += 2;
+    cycle += 5;
     // if (addr & 0x00ff + reg.x > 0xff)
     //   reg->pc += 6;
     // else
