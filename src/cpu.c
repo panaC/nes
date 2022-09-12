@@ -4,6 +4,7 @@
 // todo:  global variable
 // handle State Machine with cycle
 uint32_t cycle = 0; 
+int adc_opcode(t_registers *reg, t_mem *memory);
 
 void run(t_mem *memory, size_t size, uint16_t start) {
 
@@ -30,12 +31,13 @@ void run(t_mem *memory, size_t size, uint16_t start) {
   // printf("%d\n", *memory);
 
 
-
-  res = adc_opcode(op, addr, reg);
+  int res = 0;
+  res = adc_opcode(&reg, memory);
   if (res) {
     // found
   }
 
+  uint8_t op = *memory[reg.pc];
   if (op == 0) {
     // break;
     return;
@@ -55,26 +57,26 @@ void check_processor_status(int32_t lastValue, t_registers *reg)
     reg->p.V = 1; // overflow
 }
 
-uint8_t addressMode(t_e_mode mode, union u16 arg, t_registers reg, t_mem memory) {
+uint8_t addressMode(t_e_mode mode, union u16 arg, t_registers *reg, t_mem *memory) {
 
   switch (mode)
   {
   case zero_page:
     return *memory[arg.lsb];
   case zero_page_x:
-    return *memory[(arg.lsb + reg.x) % 256];
+    return *memory[(arg.lsb + reg->x) % 256];
   case zero_page_y:
-    return *memory[(arg.lsb + reg.y) % 256];
+    return *memory[(arg.lsb + reg->y) % 256];
   case absolute:
     return *memory[arg.lsb];
   case absolute_x:
-    return *memory[arg.value + reg.x];
+    return *memory[arg.value + reg->x];
   case absolute_y:
-    return *memory[arg.value + reg.y];
+    return *memory[arg.value + reg->y];
   case indirect_x:
-    return *memory[*memory[(arg.lsb + reg.x) % 256] + *memory[(arg.lsb + reg.x + 1) % 256] * 256];
+    return *memory[*memory[(arg.lsb + reg->x) % 256] + *memory[(arg.lsb + reg->x + 1) % 256] * 256];
   case indirect_y:
-    return *memory[*memory[arg.lsb] + *memory[(arg.lsb + 1) % 256] * 256 + reg.y];
+    return *memory[*memory[arg.lsb] + *memory[(arg.lsb + 1) % 256] * 256 + reg->y];
   }
   return 0;
 }
@@ -120,8 +122,8 @@ int adc_opcode(t_registers *reg, t_mem *memory) {
   case 0x7d: 
     lastValue = reg->a + addressMode(absolute_x, addr, reg, memory) + reg->p.C;
 
-    req->pc += 3;
-    if (addr.value & 0x00ff + reg.x > 0xff)
+    reg->pc += 3;
+    if ((addr.value & 0x00ff) + reg->x > 0xff)
       cycle += 5;
     else
       cycle += 4;
@@ -140,8 +142,8 @@ int adc_opcode(t_registers *reg, t_mem *memory) {
   case 0x79: 
     lastValue = reg->a + addressMode(absolute_y, addr, reg, memory) + reg->p.C;
 
-    req->pc += 3;
-    if (addr.value & 0x00ff + reg.x > 0xff)
+    reg->pc += 3;
+    if ((addr.value & 0x00ff) + reg->x > 0xff)
       cycle += 5;
     else
       cycle += 4;
@@ -152,7 +154,7 @@ int adc_opcode(t_registers *reg, t_mem *memory) {
     lastValue = reg->a + addressMode(indirect_x, addr, reg, memory) + reg->p.C;
 
     reg->pc += 2;
-    cycle += 6
+    cycle += 6;
 
     break; 
    case 0x71: 
