@@ -72,6 +72,6 @@ typedef enum e_mode {
 #define MEM_SIZE 1024 // 64KB // 2 ^16 // 65536
 typedef uint8_t* t_mem;
 
-void run(t_mem *memory, size_t size, uint16_t start);
+void run(t_mem *memory, size_t size, t_registers *reg);
 
 #endif
