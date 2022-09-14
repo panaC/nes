@@ -955,6 +955,186 @@ int jsr_opcode(t_registers *reg, t_mem *memory) {
   return 1;
 }
 
+int lda_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
+  switch (op)
+  {
+  case 0xa9:
+    reg->a = arg.lsb;
+
+    reg->pc += 2;
+    cycle += 2;
+    break;
+  
+  case 0xa5:
+    reg->a = addressMode(zero_page, arg, reg, memory);
+
+    reg->pc += 2;
+    cycle += 3;
+    break;
+  
+  case 0xb5:
+    reg->a = addressMode(zero_page_x, arg, reg, memory);
+
+    reg->pc += 2;
+    cycle += 4;
+    break;
+
+  case 0xad:
+    reg->a = addressMode(absolute, arg, reg, memory);
+
+    reg->pc += 3;
+    cycle += 4;
+    break;
+
+  case 0xbd:
+    reg->a = addressMode(absolute_x, arg, reg, memory);
+
+    reg->pc += 3;
+    cycle += 4; // TODO +1 if page crossed
+    break;
+
+  case 0xb9:
+    reg->a = addressMode(absolute_y, arg, reg, memory);
+
+    reg->pc += 3;
+    cycle += 4; // TODO +1 if page crossed
+    break;
+  
+  case 0xa1:
+    reg->a = addressMode(indirect_x, arg, reg, memory);
+
+    reg->pc += 2;
+    cycle += 6;
+    break;
+
+  case 0xb1:
+    reg->a = addressMode(indirect_y, arg, reg, memory);
+
+    reg->pc += 2;
+    cycle += 5; // TODO +1 if page crossed
+    break;
+
+  default:
+    return 0;
+  }
+
+  if (reg->a == 0)
+    reg->p.Z = 1;
+  if (reg->a < 0)
+    reg->p.N = 1;
+  
+  return 1;
+}
+
+int ldx_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
+  switch (op)
+  {
+  case 0xa2:
+    reg->x = arg.lsb;
+
+    reg->pc += 2;
+    cycle += 2;
+    break;
+  
+  case 0xa6:
+    reg->x = addressMode(zero_page, arg, reg, memory);
+
+    reg->pc += 2;
+    cycle += 3;
+    break;
+  
+  case 0xb6:
+    reg->x = addressMode(zero_page_y, arg, reg, memory);
+
+    reg->pc += 2;
+    cycle += 4;
+    break;
+
+  case 0xae:
+    reg->x = addressMode(absolute, arg, reg, memory);
+
+    reg->pc += 3;
+    cycle += 4;
+    break;
+
+  case 0xbe:
+    reg->x = addressMode(absolute_y, arg, reg, memory);
+
+    reg->pc += 3;
+    cycle += 4; // TODO +1 if page crossed
+    break;
+
+  default:
+    return 0;
+  }
+
+  if (reg->a == 0)
+    reg->p.Z = 1;
+  if (reg->a < 0)
+    reg->p.N = 1;
+  
+  return 1;
+}
+
+int ldy_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
+  switch (op)
+  {
+  case 0xa0:
+    reg->a = arg.lsb;
+
+    reg->pc += 2;
+    cycle += 2;
+    break;
+  
+  case 0xa4:
+    reg->y = addressMode(zero_page, arg, reg, memory);
+
+    reg->pc += 2;
+    cycle += 3;
+    break;
+  
+  case 0xb4:
+    reg->y = addressMode(zero_page_x, arg, reg, memory);
+
+    reg->pc += 2;
+    cycle += 4;
+    break;
+
+  case 0xac:
+    reg->y = addressMode(absolute, arg, reg, memory);
+
+    reg->pc += 3;
+    cycle += 4;
+    break;
+
+  case 0xbc:
+    reg->y = addressMode(absolute_x, arg, reg, memory);
+
+    reg->pc += 3;
+    cycle += 4; // TODO +1 if page crossed
+    break;
+
+  default:
+    return 0;
+  }
+
+  if (reg->a == 0)
+    reg->p.Z = 1;
+  if (reg->a < 0)
+    reg->p.N = 1;
+  
+  return 1;
+}
+
 void run(t_mem *memory, size_t size, t_registers *reg) {
 
   VB0(printf("RUN 6502 with a memory of %zu octets", size));
@@ -986,6 +1166,10 @@ void run(t_mem *memory, size_t size, t_registers *reg) {
       // break;
       return;
     }
+    if (op == 0xea) {
+      // nop
+      reg->pc += 1;
+    }
     res += adc_opcode(reg, memory);
     res += and_opcode(reg, memory);
     res += asl_opcode(reg, memory);
@@ -1011,6 +1195,9 @@ void run(t_mem *memory, size_t size, t_registers *reg) {
     res += eor_opcode(reg, memory);
     res += jmp_opcode(reg, memory);
     res += jsr_opcode(reg, memory);
+    res += lda_opcode(reg, memory);
+    res += ldx_opcode(reg, memory);
+    res += ldy_opcode(reg, memory);
     if (res) {
       // found
     } else {
