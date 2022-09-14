@@ -484,6 +484,7 @@ int bvs_opcode(t_registers *reg, t_mem *memory) {
 
 int clr_opcode(t_registers *reg, t_mem *memory) {
 
+  uint8_t op = *memory[reg->pc];
   switch (op)
   {
   case 0x18:
@@ -512,6 +513,445 @@ int clr_opcode(t_registers *reg, t_mem *memory) {
 
   reg->pc += 1;
   cycle += 2;
+  return 1;
+}
+
+int cmp_opcode(t_registers *reg, t_mem *memory) {
+
+  int32_t last_value;
+  uint8_t op = *memory[reg->pc];
+  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
+  switch (op)
+  {
+  case 0xc9:
+    last_value = reg->a - arg.lsb;
+
+    reg->pc += 2;
+    cycle += 2;
+    break;
+  
+  case 0xc5:
+    last_value = reg->a - addressMode(zero_page, arg, reg, memory);
+
+    reg->pc += 2;
+    cycle += 3;
+    break;
+  
+  case 0xd5:
+    last_value = reg->a - addressMode(zero_page_x, arg, reg, memory);
+
+    reg->pc += 2;
+    cycle += 4;
+    break;
+
+  case 0xcd:
+    last_value = reg->a - addressMode(absolute, arg, reg, memory);
+
+    reg->pc += 3;
+    cycle += 4;
+    break;
+
+  case 0xdd:
+    last_value = reg->a - addressMode(absolute_x, arg, reg, memory);
+
+    reg->pc += 3;
+    cycle += 4; // TODO +1 if page crossed
+    break;
+
+  case 0xd9:
+    last_value = reg->a - addressMode(absolute_y, arg, reg, memory);
+
+    reg->pc += 3;
+    cycle += 4; // TODO +1 if page crossed
+    break;
+  
+  case 0xc1:
+    last_value = reg->a - addressMode(indirect_x, arg, reg, memory);
+
+    reg->pc += 2;
+    cycle += 6;
+    break;
+
+  case 0xd1:
+    last_value = reg->a - addressMode(indirect_y, arg, reg, memory);
+
+    reg->pc += 2;
+    cycle += 5; // TODO +1 if page crossed
+    break;
+
+  default:
+    return 0;
+  }
+
+  if (last_value == 0)
+    reg->p.Z = 1;
+  if (last_value > 0)
+    reg->p.C = 1;
+  if (last_value < 0)
+    reg->p.N = 1;
+  
+  return 1;
+}
+
+int cpx_opcode(t_registers *reg, t_mem *memory) {
+
+  int32_t last_value;
+  uint8_t op = *memory[reg->pc];
+  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
+  switch (op)
+  {
+  case 0xe0:
+    last_value = reg->x - arg.lsb;
+
+    reg->pc += 2;
+    cycle += 2;
+    break;
+  
+  case 0xe4:
+    last_value = reg->x - addressMode(zero_page, arg, reg, memory);
+
+    reg->pc += 2;
+    cycle += 3;
+    break;
+  
+  case 0xec:
+    last_value = reg->x - addressMode(absolute, arg, reg, memory);
+
+    reg->pc += 3;
+    cycle += 4;
+    break;
+
+  default:
+    return 0;
+  }
+
+  if (last_value == 0)
+    reg->p.Z = 1;
+  if (last_value > 0)
+    reg->p.C = 1;
+  if (last_value < 0)
+    reg->p.N = 1;
+  
+  return 1;
+}
+
+int cpy_opcode(t_registers *reg, t_mem *memory) {
+
+  int32_t last_value;
+  uint8_t op = *memory[reg->pc];
+  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
+  switch (op)
+  {
+  case 0xc0:
+    last_value = reg->y - arg.lsb;
+
+    reg->pc += 2;
+    cycle += 2;
+    break;
+  
+  case 0xc4:
+    last_value = reg->y - addressMode(zero_page, arg, reg, memory);
+
+    reg->pc += 2;
+    cycle += 3;
+    break;
+  
+  case 0xcc:
+    last_value = reg->y - addressMode(absolute, arg, reg, memory);
+
+    reg->pc += 3;
+    cycle += 4;
+    break;
+
+  default:
+    return 0;
+  }
+
+  if (last_value == 0)
+    reg->p.Z = 1;
+  if (last_value > 0)
+    reg->p.C = 1;
+  if (last_value < 0)
+    reg->p.N = 1;
+  
+  return 1;
+}
+
+int dec_opcode(t_registers *reg, t_mem *memory) {
+
+  int32_t last_value;
+  uint8_t op = *memory[reg->pc];
+  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
+  switch (op)
+  {
+  case 0xc6:
+    last_value = *memory[*memory[arg.lsb]] -= 1;
+
+    reg->pc += 2;
+    cycle += 5;
+    break;
+  
+  case 0xd6:
+    last_value = *memory[*memory[(arg.lsb + reg->x) % 256]] -= 1;
+
+    reg->pc += 2;
+    cycle += 6;
+
+  case 0xce:
+    last_value = *memory[arg.value] -= 1;
+
+    reg->pc += 3;
+    cycle += 6;
+  
+  case 0xde:
+    last_value = *memory[arg.value + reg->x] -= 1;
+
+    reg->pc += 3;
+    cycle += 7;
+  
+
+  default:
+    return 0;
+  }
+
+  if (last_value == 0)
+    reg->p.Z = 1;
+  if (last_value < 0)
+    reg->p.N = 1;
+  
+  return 1;
+}
+
+int inc_opcode(t_registers *reg, t_mem *memory) {
+
+  int32_t last_value;
+  uint8_t op = *memory[reg->pc];
+  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
+  switch (op)
+  {
+  case 0xe6:
+    last_value = *memory[*memory[arg.lsb]] += 1;
+
+    reg->pc += 2;
+    cycle += 5;
+    break;
+  
+  case 0xf6:
+    last_value = *memory[*memory[(arg.lsb + reg->x) % 256]] += 1;
+
+    reg->pc += 2;
+    cycle += 6;
+
+  case 0xee:
+    last_value = *memory[arg.value] += 1;
+
+    reg->pc += 3;
+    cycle += 6;
+  
+  case 0xfe:
+    last_value = *memory[arg.value + reg->x] += 1;
+
+    reg->pc += 3;
+    cycle += 7;
+  
+
+  default:
+    return 0;
+  }
+
+  if (last_value == 0)
+    reg->p.Z = 1;
+  if (last_value < 0)
+    reg->p.N = 1;
+  
+  return 1;
+}
+
+int dex_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  if (op == 0xca)
+  {
+    reg->x -= 1;
+    if (reg->x == 0)
+      reg->p.Z = 1;
+    if (reg->x < 0)
+      reg->p.N = 1;
+    reg->pc += 1;
+    cycle += 2;
+    return 1;
+  }
+  return 0;
+}
+
+int dey_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  if (op == 0x88)
+  {
+    reg->y -= 1;
+    if (reg->y == 0)
+      reg->p.Z = 1;
+    if (reg->y < 0)
+      reg->p.N = 1;
+    reg->pc += 1;
+    cycle += 2;
+    return 1;
+  }
+  return 0;
+}
+
+int inx_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  if (op == 0xe8)
+  {
+    reg->x += 1;
+    if (reg->x == 0)
+      reg->p.Z = 1;
+    if (reg->x < 0)
+      reg->p.N = 1;
+    reg->pc += 1;
+    cycle += 2;
+    return 1;
+  }
+  return 0;
+}
+
+int iny_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  if (op == 0xc8)
+  {
+    reg->y += 1;
+    if (reg->y == 0)
+      reg->p.Z = 1;
+    if (reg->y < 0)
+      reg->p.N = 1;
+    reg->pc += 1;
+    cycle += 2;
+    return 1;
+  }
+  return 0;
+}
+
+int eor_opcode(t_registers *reg, t_mem *memory) {
+
+  int32_t last_value;
+  uint8_t op = *memory[reg->pc];
+  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
+  switch (op)
+  {
+  case 0x49:
+    last_value = reg->a ^ arg.lsb;
+
+    reg->pc += 2;
+    cycle += 2;
+    break;
+  
+  case 0x45:
+    last_value = reg->a ^ addressMode(zero_page, arg, reg, memory);
+
+    reg->pc += 2;
+    cycle += 3;
+    break;
+  
+  case 0x55:
+    last_value = reg->a ^ addressMode(zero_page_x, arg, reg, memory);
+
+    reg->pc += 2;
+    cycle += 4;
+    break;
+
+  case 0x4d:
+    last_value = reg->a ^ addressMode(absolute, arg, reg, memory);
+
+    reg->pc += 3;
+    cycle += 4;
+    break;
+
+  case 0x5d:
+    last_value = reg->a ^ addressMode(absolute_x, arg, reg, memory);
+
+    reg->pc += 3;
+    cycle += 4; // TODO +1 if page crossed
+    break;
+
+  case 0x59:
+    last_value = reg->a ^ addressMode(absolute_y, arg, reg, memory);
+
+    reg->pc += 3;
+    cycle += 4; // TODO +1 if page crossed
+    break;
+  
+  case 0x41:
+    last_value = reg->a ^ addressMode(indirect_x, arg, reg, memory);
+
+    reg->pc += 2;
+    cycle += 6;
+    break;
+
+  case 0x51:
+    last_value = reg->a ^ addressMode(indirect_y, arg, reg, memory);
+
+    reg->pc += 2;
+    cycle += 5; // TODO +1 if page crossed
+    break;
+
+  default:
+    return 0;
+  }
+
+  if (last_value == 0)
+    reg->p.Z = 1;
+  if (last_value < 0)
+    reg->p.N = 1;
+  
+  return 1;
+}
+
+int jmp_opcode(t_registers *reg, t_mem *memory) {
+
+  int32_t last_value;
+  uint8_t op = *memory[reg->pc];
+  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
+  switch (op)
+  {
+  case 0x4c:
+    reg->pc += arg.value; // TODO/QUESTION jump is after opcode jmp or before ?
+    cycle += 3;
+    break;
+  
+  case 0x6c:
+    reg->pc += 3; // TODO: how to do indirect jump ? https://www.nesdev.org/obelisk-6502-guide/addressing.html#IND
+    cycle += 5;
+    break;
+  
+  default:
+    return 0;
+  }
+  
+  return 1;
+}
+
+int jsr_opcode(t_registers *reg, t_mem *memory) {
+
+  int32_t last_value;
+  uint8_t op = *memory[reg->pc];
+  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
+  switch (op)
+  {
+
+  case 0x6c:
+    // TODO : implement jsr with SP
+    reg->pc += arg.value;
+    cycle += 6;
+    break;
+
+  default:
+    return 0;
+  }
+
   return 1;
 }
 
@@ -559,6 +999,18 @@ void run(t_mem *memory, size_t size, t_registers *reg) {
     res += bvc_opcode(reg, memory);
     res += bvs_opcode(reg, memory);
     res += clr_opcode(reg, memory);
+    res += cmp_opcode(reg, memory);
+    res += cpx_opcode(reg, memory);
+    res += cpy_opcode(reg, memory);
+    res += dec_opcode(reg, memory);
+    res += inc_opcode(reg, memory);
+    res += dex_opcode(reg, memory);
+    res += dey_opcode(reg, memory);
+    res += inx_opcode(reg, memory);
+    res += iny_opcode(reg, memory);
+    res += eor_opcode(reg, memory);
+    res += jmp_opcode(reg, memory);
+    res += jsr_opcode(reg, memory);
     if (res) {
       // found
     } else {
