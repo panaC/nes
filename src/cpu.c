@@ -14,18 +14,18 @@ uint32_t cycle = 0;
 
 
 
-void check_processor_status_acc(int32_t lastValue, t_registers *reg)
+void check_processor_status(int32_t lastValue, int8_t value, t_registers *reg)
 {
 
   // TODO : https://www.doc.ic.ac.uk/~eedwards/compsys/arithmetic/index.html#:~:text=Overflow%20Rule%20for%20addition,result%20has%20the%20opposite%20sign.
   // carry should be checked with the sign of the bit 7 and not from a cast to 32bit variable
   if (lastValue > 127 || lastValue < -128)
     reg->p.C = 1; // overflow or underflow
-  if (reg->a == 0)
+  if (value == 0)
     reg->p.Z = 1; // Zero
-  if (reg->a < 0) // or check the bit 7 if equal one then neg
+  if (value < 0) // or check the bit 7 if equal one then neg
     reg->p.N = 1; // Negatif
-  if (lastValue > reg->a) // TODO same as carry
+  if (lastValue > value) // TODO same as carry
     reg->p.V = 1; // overflow
 }
 
@@ -42,7 +42,7 @@ uint8_t addressMode(t_e_mode mode, union u16 arg, t_registers *reg, t_mem *memor
   case zero_page_y:
     return *memory[(arg.lsb + reg->y) % 256];
   case absolute:
-    return *memory[arg.lsb];
+    return *memory[arg.value];
   case absolute_x:
     return *memory[arg.value + reg->x];
   case absolute_y:
@@ -121,6 +121,7 @@ int adc_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0x79: 
+    VB2(printf("adc opcode absolutey"));
     lastValue = reg->a + addressMode(absolute_y, addr, reg, memory) + reg->p.C;
     reg->a = (int8_t)lastValue;
 
@@ -133,6 +134,7 @@ int adc_opcode(t_registers *reg, t_mem *memory) {
     break;
 
    case 0x61: 
+    VB2(printf("adc opcode indirectx"));
     lastValue = reg->a + addressMode(indirect_x, addr, reg, memory) + reg->p.C;
     reg->a = (int8_t)lastValue;
 
@@ -141,6 +143,7 @@ int adc_opcode(t_registers *reg, t_mem *memory) {
 
     break; 
    case 0x71: 
+    VB2(printf("adc opcode indirecty"));
     lastValue = reg->a + addressMode(indirect_y, addr, reg, memory) + reg->p.C;
     reg->a = (int8_t)lastValue;
 
@@ -162,23 +165,25 @@ int adc_opcode(t_registers *reg, t_mem *memory) {
       return 0;
 
   }
-  check_processor_status_acc(lastValue, reg);
+  check_processor_status(lastValue, reg->a, reg);
   return 1;
 }
 
-int add_opcode(t_registers *reg, t_mem *memory) {
+int and_opcode(t_registers *reg, t_mem *memory) {
 
   uint8_t op = *memory[reg->pc];
   union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
   switch (op)
   {
   case 0x29:
+    VB2(printf("and opcode immediate"));
     reg->a &= *memory[reg->pc + 1];
 
     cycle += 2;
     reg->pc += 2;
     break;
   case 0x25:
+    VB2(printf("and opcode zeropage"));
     reg->a &= addressMode(zero_page, arg, reg, memory);
 
     cycle += 3;
@@ -186,6 +191,7 @@ int add_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0x35:
+    VB2(printf("and opcode zeropagex"));
     reg->a &= addressMode(zero_page_x, arg, reg, memory);
 
     cycle += 4;
@@ -193,6 +199,7 @@ int add_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0x2d:
+    VB2(printf("and opcode absolute"));
     reg->a &= addressMode(absolute, arg, reg, memory);
 
     cycle += 4;
@@ -200,6 +207,7 @@ int add_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0x3d:
+    VB2(printf("and opcode absolutex"));
     reg->a &= addressMode(absolute_x, arg, reg, memory);
 
     cycle += 4; // Todo +1 if page crossed
@@ -207,6 +215,7 @@ int add_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0x39:
+    VB2(printf("and opcode absolutey"));
     reg->a &= addressMode(absolute_y, arg, reg, memory);
 
     cycle += 4; // todo +1 if page crossed
@@ -214,6 +223,7 @@ int add_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0x21:
+    VB2(printf("and opcode indirectx"));
     reg->a &= addressMode(indirect_x, arg, reg, memory);
 
     cycle += 6;
@@ -221,6 +231,7 @@ int add_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0x31:
+    VB2(printf("and opcode indirecty"));
     reg->a &= addressMode(indirect_y, arg, reg, memory);
 
     cycle += 5; // todo +1 if page crossed
@@ -231,7 +242,7 @@ int add_opcode(t_registers *reg, t_mem *memory) {
     return 0;
   }
 
-  check_processor_status_acc(reg->a, reg);
+  check_processor_status(reg->a, reg->a, reg);
   return 1;
 }
 
@@ -243,46 +254,59 @@ int asl_opcode(t_registers *reg, t_mem *memory) {
   switch (op)
   {
   case 0x0a:
+    VB2(printf("asl opcode immediate"));
     last_value = reg->a << 1;
     reg->a <<= 1;
 
     cycle += 2;
     reg->pc += 1;
+    check_processor_status(last_value, reg->a, reg);
     break;
   
   case 0x06:
-    *memory[addressMode(zero_page, arg, reg, memory)] <<= 1;
-    
+    VB2(printf("asl opcode zeropage"));
+    last_value = *memory[arg.lsb] << 1;
+    *memory[arg.lsb] <<= 1;
+
     cycle += 5;
     reg->pc += 2;
+    check_processor_status(last_value, *memory[arg.lsb], reg);
     break;
 
   case 0x16:
-    *memory[addressMode(zero_page_x, arg, reg, memory)] <<= 1;
+    VB2(printf("asl opcode zeropagex"));
+    last_value = *memory[arg.lsb + reg->x] << 1;
+    *memory[arg.lsb + reg->x] <<= 1;
 
     cycle += 6;
     reg->pc += 2;
+    check_processor_status(last_value, *memory[arg.lsb + reg->x], reg);
     break;
 
   case 0x0e:
-    *memory[addressMode(absolute, arg, reg, memory)] <<= 1;
+    VB2(printf("asl opcode absolute"));
+    last_value = *memory[arg.value] << 1;
+    *memory[arg.value] <<= 1;
 
     cycle += 6;
     reg->pc += 3;
+    check_processor_status(last_value, *memory[arg.value], reg);
     break;
 
   case 0x1e:
-    *memory[addressMode(absolute_x, arg, reg, memory)] <<= 1;
+    VB2(printf("asl opcode absolutex"));
+    last_value = *memory[arg.value + reg->x] << 1;
+    *memory[arg.value + reg->x] <<= 1;
 
     cycle += 7;
     reg->pc += 3;
+    check_processor_status(last_value, *memory[arg.value + reg->x], reg);
     break;
 
   default:
     return 0;
   }
 
-  check_processor_status_acc(last_value, reg);
   return 1;
 }
 
@@ -290,6 +314,7 @@ int bcc_opcode(t_registers *reg, t_mem *memory) {
 
   uint8_t op = *memory[reg->pc];
   if (op == 0x90) {
+    VB2(printf("bcc opcode relative"));
 
     if (reg->p.C == 0) {
       reg->pc += *memory[reg->pc + 1];
@@ -300,6 +325,194 @@ int bcc_opcode(t_registers *reg, t_mem *memory) {
     return 1;
   }
   return 0;
+}
+
+int bcs_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  if (op == 0xb0) {
+    VB2(printf("bcs opcode relative"));
+
+    if (reg->p.C == 1) {
+      reg->pc += *memory[reg->pc + 1];
+    } else {
+      reg->pc += 2;
+    }
+    cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
+    return 1;
+  }
+  return 0;
+}
+
+int bce_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  if (op == 0xf0) {
+    VB2(printf("bce opcode relative"));
+
+    if (reg->p.Z == 1) {
+      reg->pc += *memory[reg->pc + 1];
+    } else {
+      reg->pc += 2;
+    }
+    cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
+    return 1;
+  }
+  return 0;
+}
+
+int bit_opcode(t_registers *reg, t_mem *memory) {
+
+  int8_t value;
+  uint8_t op = *memory[reg->pc];
+  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
+  switch (op)
+  {
+  case 0x24:
+    value = reg->a & *memory[arg.lsb];
+    VB2(printf("bit opcode immediate"));
+
+    reg->pc += 2;
+    cycle += 3;
+    break;
+
+  case 0x2c:
+    value = reg->a & addressMode(absolute, arg, reg, memory);
+    VB2(printf("bit opcode absolute"));
+
+    reg->pc += 3;
+    cycle += 4;
+    break;
+
+  default:
+    return 0;
+  }
+  if (value == 0)
+    reg->p.Z = 1;
+  if (value & 0b100000)
+    reg->p.V = 1;
+  if (value & 0b1000000)
+    reg->p.N = 1;
+
+  return 1;
+}
+
+int bmi_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  if (op == 0x30) {
+    VB2(printf("bmi opcode relative"));
+
+    if (reg->p.N == 1) {
+      reg->pc += *memory[reg->pc + 1];
+    } else {
+      reg->pc += 2;
+    }
+    cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
+    return 1;
+  }
+  return 0;
+}
+
+int bne_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  if (op == 0xd0) {
+    VB2(printf("bne opcode relative"));
+
+    if (reg->p.Z == 0) {
+      reg->pc += *memory[reg->pc + 1];
+    } else {
+      reg->pc += 2;
+    }
+    cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
+    return 1;
+  }
+  return 0;
+}
+
+int bpl_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  if (op == 0x10) {
+    VB2(printf("bpl opcode relative"));
+
+    if (reg->p.N == 0) {
+      reg->pc += *memory[reg->pc + 1];
+    } else {
+      reg->pc += 2;
+    }
+    cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
+    return 1;
+  }
+  return 0;
+}
+
+int bvc_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  if (op == 0x50) {
+    VB2(printf("bvc opcode relative"));
+
+    if (reg->p.V == 0) {
+      reg->pc += *memory[reg->pc + 1];
+    } else {
+      reg->pc += 2;
+    }
+    cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
+    return 1;
+  }
+  return 0;
+}
+
+int bvs_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  if (op == 0x70) {
+    VB2(printf("bvs opcode relative"));
+
+    if (reg->p.V == 1) {
+      reg->pc += *memory[reg->pc + 1];
+    } else {
+      reg->pc += 2;
+    }
+    cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
+    return 1;
+  }
+  return 0;
+}
+
+int clr_opcode(t_registers *reg, t_mem *memory) {
+
+  switch (op)
+  {
+  case 0x18:
+    // clc
+    reg->p.C = 0;
+    break;
+  
+  case 0xd8:
+    // cld
+    reg->p.D = 0;
+    break;
+
+  case 0x58:
+    // cli
+    reg->p.I = 0;
+    break;
+
+  case 0xb8:
+    // clv
+    reg->p.V = 0;
+    break;
+  
+  default:
+    return 0;
+  }
+
+  reg->pc += 1;
+  cycle += 2;
+  return 1;
 }
 
 void run(t_mem *memory, size_t size, t_registers *reg) {
@@ -334,9 +547,18 @@ void run(t_mem *memory, size_t size, t_registers *reg) {
       return;
     }
     res += adc_opcode(reg, memory);
-    res += add_opcode(reg, memory);
+    res += and_opcode(reg, memory);
     res += asl_opcode(reg, memory);
     res += bcc_opcode(reg, memory);
+    res += bcs_opcode(reg, memory);
+    res += bce_opcode(reg, memory);
+    res += bit_opcode(reg, memory);
+    res += bmi_opcode(reg, memory);
+    res += bne_opcode(reg, memory);
+    res += bpl_opcode(reg, memory);
+    res += bvc_opcode(reg, memory);
+    res += bvs_opcode(reg, memory);
+    res += clr_opcode(reg, memory);
     if (res) {
       // found
     } else {
@@ -345,6 +567,7 @@ void run(t_mem *memory, size_t size, t_registers *reg) {
     }
 
     VB4(print_register(reg));
+    VB4(printf("cycle=%d", cycle));
 
   }
 
