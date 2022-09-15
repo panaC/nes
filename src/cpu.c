@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include "cpu.h"
 #include "debug.h"
@@ -29,30 +30,35 @@ void check_processor_status(int32_t lastValue, int8_t value, t_registers *reg)
     reg->p.V = 1; // overflow
 }
 
-uint8_t addressMode(t_e_mode mode, union u16 arg, t_registers *reg, t_mem *memory) {
+uint8_t* addressModePtr(t_e_mode mode, union u16 arg, t_registers *reg, t_mem *memory) {
 
   VB4(printf("addressMode arg(LSB=%x,MSB=%x,v=%x)", arg.lsb, arg.msb, arg.value));
 
   switch (mode)
   {
   case zero_page:
-    return *memory[arg.lsb];
+    return memory[arg.lsb];
   case zero_page_x:
-    return *memory[(arg.lsb + reg->x) % 256];
+    return memory[(arg.lsb + reg->x) % 256];
   case zero_page_y:
-    return *memory[(arg.lsb + reg->y) % 256];
+    return memory[(arg.lsb + reg->y) % 256];
   case absolute:
-    return *memory[arg.value];
+    return memory[arg.value];
   case absolute_x:
-    return *memory[arg.value + reg->x];
+    return memory[arg.value + reg->x];
   case absolute_y:
-    return *memory[arg.value + reg->y];
+    return memory[arg.value + reg->y];
   case indirect_x:
-    return *memory[*memory[(arg.lsb + reg->x) % 256] + *memory[(arg.lsb + reg->x + 1) % 256] * 256];
+    return memory[*memory[(arg.lsb + reg->x) % 256] + *memory[(arg.lsb + reg->x + 1) % 256] * 256];
   case indirect_y:
-    return *memory[*memory[arg.lsb] + *memory[(arg.lsb + 1) % 256] * 256 + reg->y];
+    return memory[*memory[arg.lsb] + *memory[(arg.lsb + 1) % 256] * 256 + reg->y];
   }
   return 0;
+}
+
+uint8_t addressMode(t_e_mode mode, union u16 arg, t_registers *reg, t_mem *memory) {
+
+  return *addressModePtr(mode, arg, reg, memory);
 }
 
 int adc_opcode(t_registers *reg, t_mem *memory) {
@@ -1355,6 +1361,147 @@ int ora_opcode(t_registers *reg, t_mem *memory) {
   return 1;
 }
 
+int sta_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
+  switch (op)
+  {
+  case 0x85:
+    VB2(printf("sta opcode zeropage"));
+    *addressModePtr(zero_page, arg, reg, memory) = reg->a;
+
+    cycle += 3;
+    reg->pc += 2;
+    break;
+  case 0x95:
+    VB2(printf("sta opcode zeropagex"));
+    *addressModePtr(zero_page_x, arg, reg, memory) = reg->a;
+
+    cycle += 4;
+    reg->pc += 2;
+    break;
+  
+  case 0x8d:
+    VB2(printf("sta opcode absolute"));
+    *addressModePtr(absolute, arg, reg, memory) = reg->a;
+
+    cycle += 4;
+    reg->pc += 3;
+    break;
+  
+  case 0x9d:
+    VB2(printf("sta opcode absolutex"));
+    *addressModePtr(absolute_x, arg, reg, memory) = reg->a;
+
+    cycle += 5;
+    reg->pc += 3;
+    break;
+
+  case 0x99:
+    VB2(printf("sta opcode absolutey"));
+    *addressModePtr(absolute_y, arg, reg, memory) = reg->a;
+
+    cycle += 5;
+    reg->pc += 3;
+    break;
+
+  case 0x81:
+    VB2(printf("sta opcode indirectx"));
+    *addressModePtr(indirect_x, arg, reg, memory) = reg->a;
+
+    cycle += 6;
+    reg->pc += 2;
+    break;
+
+  case 0x91:
+    VB2(printf("sta opcode indirecty"));
+    *addressModePtr(indirect_y, arg, reg, memory) = reg->a;
+
+    cycle += 6;
+    reg->pc += 2;
+    break;
+  
+  default:
+    return 0;
+  }
+
+  return 1;
+}
+
+int stx_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
+  switch (op)
+  {
+  case 0x86:
+    VB2(printf("stx opcode zeropage"));
+    *addressModePtr(zero_page, arg, reg, memory) = reg->x;
+
+    cycle += 3;
+    reg->pc += 2;
+    break;
+  case 0x96:
+    VB2(printf("stx opcode zeropageY"));
+    *addressModePtr(zero_page_y, arg, reg, memory) = reg->x;
+
+    cycle += 4;
+    reg->pc += 2;
+    break;
+  
+  case 0x8e:
+    VB2(printf("stx opcode absolute"));
+    *addressModePtr(absolute, arg, reg, memory) = reg->x;
+
+    cycle += 4;
+    reg->pc += 3;
+    break;
+  
+  default:
+    return 0;
+  }
+
+  return 1;
+}
+
+int sty_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
+  switch (op)
+  {
+  case 0x84:
+    VB2(printf("sty opcode zeropage"));
+    *addressModePtr(zero_page, arg, reg, memory) = reg->y;
+
+    cycle += 3;
+    reg->pc += 2;
+    break;
+
+  case 0x94:
+    VB2(printf("sty opcode zeropageX"));
+    *addressModePtr(zero_page_x, arg, reg, memory) = reg->y;
+
+    cycle += 4;
+    reg->pc += 2;
+    break;
+  
+  case 0x8c:
+    VB2(printf("sty opcode absolute"));
+    *addressModePtr(zero_page_y, arg, reg, memory) = reg->y;
+
+    cycle += 4;
+    reg->pc += 3;
+    break;
+  
+  default:
+    return 0;
+  }
+
+  return 1;
+}
+
 void run(t_mem *memory, size_t size, t_registers *reg) {
 
   VB0(printf("RUN 6502 with a memory of %zu octets", size));
@@ -1422,6 +1569,10 @@ void run(t_mem *memory, size_t size, t_registers *reg) {
     res += ldy_opcode(reg, memory);
     res += lsr_opcode(reg, memory);
     res += ora_opcode(reg, memory);
+    res += sta_opcode(reg, memory);
+    res += stx_opcode(reg, memory);
+    res += sty_opcode(reg, memory);
+    assert(res < 2);
     if (res) {
       // found
     } else {
