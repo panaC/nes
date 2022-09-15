@@ -1628,7 +1628,7 @@ int jsr_opcode(t_registers *reg, t_mem *memory) {
     pc.value = reg->pc += 2;
     *memory[0x01ff - reg->sp] = pc.msb;
     reg->sp--;
-    *memory[0x01ff - reg->sp - 1] = pc.lsb;
+    *memory[0x01ff - reg->sp] = pc.lsb;
     reg->sp--;
     reg->pc = arg.value;
     cycle += 6;
