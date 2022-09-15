@@ -516,6 +516,85 @@ int clr_opcode(t_registers *reg, t_mem *memory) {
   return 1;
 }
 
+int set_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  switch (op)
+  {
+  case 0x38:
+    // sec
+    reg->p.C = 1;
+    break;
+  
+  case 0xf8:
+    // sed
+    reg->p.D = 1;
+    break;
+
+  case 0x78:
+    // sei
+    reg->p.I = 1;
+    break;
+
+  default:
+    return 0;
+  }
+
+  reg->pc += 1;
+  cycle += 2;
+  return 1;
+}
+
+int trs_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  switch (op)
+  {
+  case 0xaa:
+    // tax
+    reg->x = reg->a;
+    check_processor_status(reg->x, reg->x, reg);
+    break;
+  
+  case 0xa8:
+    // tay
+    reg->y = reg->a;
+    check_processor_status(reg->y, reg->y, reg);
+    break;
+
+  case 0xba:
+    // tsx
+    reg->x = reg->sp;
+    check_processor_status(reg->x, reg->x, reg);
+    break;
+
+  case 0x8a:
+    // txa
+    reg->a = reg->x;
+    check_processor_status(reg->a, reg->a, reg);
+    break;
+  
+  case 0x9a:
+    // txs
+    reg->a = reg->sp;
+    // no check status
+    break;
+  
+  case 0x98:
+    // tya
+    reg->a = reg->y;
+    check_processor_status(reg->a, reg->a, reg);
+    break;
+
+  default:
+    return 0;
+  }
+
+  reg->pc += 1;
+  cycle += 2;
+  return 1;
+}
+
 int cmp_opcode(t_registers *reg, t_mem *memory) {
 
   int32_t last_value;
@@ -1135,6 +1214,147 @@ int ldy_opcode(t_registers *reg, t_mem *memory) {
   return 1;
 }
 
+int lsr_opcode(t_registers *reg, t_mem *memory) {
+
+  int32_t last_value;
+  uint8_t op = *memory[reg->pc];
+  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
+  switch (op)
+  {
+  case 0x4a:
+    VB2(printf("lsr opcode immediate"));
+    last_value = reg->a >> 1;
+    reg->a >>= 1;
+
+    cycle += 2;
+    reg->pc += 1;
+    check_processor_status(last_value, reg->a, reg);
+    break;
+  
+  case 0x46:
+    VB2(printf("lsr opcode zeropage"));
+    last_value = *memory[arg.lsb] >> 1;
+    *memory[arg.lsb] >>= 1;
+
+    cycle += 5;
+    reg->pc += 2;
+    check_processor_status(last_value, *memory[arg.lsb], reg);
+    break;
+
+  case 0x56:
+    VB2(printf("lsr opcode zeropagex"));
+    last_value = *memory[arg.lsb + reg->x] >> 1;
+    *memory[arg.lsb + reg->x] >>= 1;
+
+    cycle += 6;
+    reg->pc += 2;
+    check_processor_status(last_value, *memory[arg.lsb + reg->x], reg);
+    break;
+
+  case 0x4e:
+    VB2(printf("lsr opcode absolute"));
+    last_value = *memory[arg.value] >> 1;
+    *memory[arg.value] >>= 1;
+
+    cycle += 6;
+    reg->pc += 3;
+    check_processor_status(last_value, *memory[arg.value], reg);
+    break;
+
+  case 0x5e:
+    VB2(printf("lsr opcode absolutex"));
+    last_value = *memory[arg.value + reg->x] >> 1;
+    *memory[arg.value + reg->x] >>= 1;
+
+    cycle += 7;
+    reg->pc += 3;
+    check_processor_status(last_value, *memory[arg.value + reg->x], reg);
+    break;
+
+  default:
+    return 0;
+  }
+
+  return 1;
+}
+
+int ora_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
+  switch (op)
+  {
+  case 0x09:
+    VB2(printf("ora opcode immediate"));
+    reg->a |= *memory[reg->pc + 1];
+
+    cycle += 2;
+    reg->pc += 2;
+    break;
+  case 0x05:
+    VB2(printf("ora opcode zeropage"));
+    reg->a |= addressMode(zero_page, arg, reg, memory);
+
+    cycle += 3;
+    reg->pc += 2;
+    break;
+  
+  case 0x15:
+    VB2(printf("ora opcode zeropagex"));
+    reg->a |= addressMode(zero_page_x, arg, reg, memory);
+
+    cycle += 4;
+    reg->pc += 2;
+    break;
+  
+  case 0x0d:
+    VB2(printf("ora opcode absolute"));
+    reg->a &= addressMode(absolute, arg, reg, memory);
+
+    cycle += 4;
+    reg->pc += 3;
+    break;
+  
+  case 0x1d:
+    VB2(printf("ora opcode absolutex"));
+    reg->a &= addressMode(absolute_x, arg, reg, memory);
+
+    cycle += 4; // Todo +1 if page crossed
+    reg->pc += 3;
+    break;
+  
+  case 0x19:
+    VB2(printf("ora opcode absolutey"));
+    reg->a |= addressMode(absolute_y, arg, reg, memory);
+
+    cycle += 4; // todo +1 if page crossed
+    reg->pc += 3;
+    break;
+  
+  case 0x01:
+    VB2(printf("ora opcode indirectx"));
+    reg->a |= addressMode(indirect_x, arg, reg, memory);
+
+    cycle += 6;
+    reg->pc += 2;
+    break;
+
+  case 0x11:
+    VB2(printf("ora opcode indirecty"));
+    reg->a |= addressMode(indirect_y, arg, reg, memory);
+
+    cycle += 5; // todo +1 if page crossed
+    reg->pc += 2;
+    break;
+  
+  default:
+    return 0;
+  }
+
+  check_processor_status(reg->a, reg->a, reg);
+  return 1;
+}
+
 void run(t_mem *memory, size_t size, t_registers *reg) {
 
   VB0(printf("RUN 6502 with a memory of %zu octets", size));
@@ -1182,7 +1402,9 @@ void run(t_mem *memory, size_t size, t_registers *reg) {
     res += bpl_opcode(reg, memory);
     res += bvc_opcode(reg, memory);
     res += bvs_opcode(reg, memory);
-    res += clr_opcode(reg, memory);
+    res += clr_opcode(reg, memory); // clear opcodes
+    res += set_opcode(reg, memory); // set opcodes
+    res += trs_opcode(reg, memory); // transfer opcodes
     res += cmp_opcode(reg, memory);
     res += cpx_opcode(reg, memory);
     res += cpy_opcode(reg, memory);
@@ -1198,6 +1420,8 @@ void run(t_mem *memory, size_t size, t_registers *reg) {
     res += lda_opcode(reg, memory);
     res += ldx_opcode(reg, memory);
     res += ldy_opcode(reg, memory);
+    res += lsr_opcode(reg, memory);
+    res += ora_opcode(reg, memory);
     if (res) {
       // found
     } else {
