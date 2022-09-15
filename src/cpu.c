@@ -1019,27 +1019,6 @@ int jmp_opcode(t_registers *reg, t_mem *memory) {
   return 1;
 }
 
-int jsr_opcode(t_registers *reg, t_mem *memory) {
-
-  int32_t last_value;
-  uint8_t op = *memory[reg->pc];
-  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
-  switch (op)
-  {
-
-  case 0x6c:
-    // TODO : implement jsr with SP
-    reg->pc += arg.value;
-    cycle += 6;
-    break;
-
-  default:
-    return 0;
-  }
-
-  return 1;
-}
-
 int lda_opcode(t_registers *reg, t_mem *memory) {
 
   uint8_t op = *memory[reg->pc];
@@ -1637,6 +1616,84 @@ int ror_opcode(t_registers *reg, t_mem *memory) {
   if (last_value < 0)
     reg->p.N = 1;
 
+  return 1;;
+}
+
+int jsr_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
+  union u16 pc = {0};
+  if (op == 0x20) {
+    pc.value = reg->pc += 2;
+    *memory[0x01ff - reg->sp] = pc.msb;
+    reg->sp--;
+    *memory[0x01ff - reg->sp - 1] = pc.lsb;
+    reg->sp--;
+    reg->pc = arg.value;
+    cycle += 6;
+    return 1;
+  }
+
+  return 0;
+}
+
+int rts_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
+  union u16 pc = {0};
+  if (op == 0x60) {
+    reg->sp++;
+    pc.lsb = *memory[0x01ff - reg->sp];
+    reg->sp++;
+    pc.msb = *memory[0x01ff - reg->sp];
+    reg->pc = pc.value;
+    cycle += 6;
+    return 1;
+  }
+
+  return 0;
+}
+
+int psp_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  switch (op)
+  {
+  case 0x48:
+    *memory[0x01ff - reg->sp] = reg->a;
+    reg->sp--;
+    reg->pc += 1;
+    cycle += 3;
+    break;
+  
+  case 0x08:
+    *memory[0x01ff - reg->sp] = reg->p.value;
+    reg->sp--;
+    reg->pc += 1;
+    cycle += 3;
+    break;
+
+  case 0x68:
+    reg->sp++;
+    reg->a = *memory[0x01ff - reg->sp];
+    check_processor_status(reg->a, reg->a, reg);
+    reg->pc += 1;
+    cycle += 3;
+    break;
+
+  case 0x28:
+    reg->sp++;
+    reg->p.value = *memory[0x01ff - reg->sp];
+    reg->pc += 1;
+    cycle += 4;
+    break;
+  
+  default:
+    return 0;
+  }
+
   return 1;
 }
 
@@ -1712,6 +1769,8 @@ void run(t_mem *memory, size_t size, t_registers *reg) {
     res += sty_opcode(reg, memory);
     res += rol_opcode(reg, memory);
     res += ror_opcode(reg, memory);
+    res += rts_opcode(reg, memory);
+    res += psp_opcode(reg, memory);
     assert(res < 2);
     if (res) {
       // found
