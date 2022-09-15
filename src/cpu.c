@@ -1502,6 +1502,144 @@ int sty_opcode(t_registers *reg, t_mem *memory) {
   return 1;
 }
 
+int rol_opcode(t_registers *reg, t_mem *memory) {
+
+  int last_value, oldbit = 0;
+  uint8_t op = *memory[reg->pc];
+  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
+  switch (op)
+  {
+  case 0x2a:
+    oldbit = (reg->a & 0x80) >> 7;
+    reg->a <<= 1;
+    reg->a = reg->a | reg->p.C;
+    reg->p.C = oldbit;
+
+    reg->pc += 1;
+    cycle += 2;
+    break;
+
+  case 0x26:
+    oldbit = (addressMode(zero_page, arg, reg, memory) & 0x80) >> 7;
+    reg->a <<= 1;
+    last_value = *addressModePtr(zero_page, arg, reg, memory) |= reg->p.C;
+    reg->p.C = oldbit;
+
+    reg->pc += 2;
+    cycle += 5;
+    break;
+
+  case 0x36:
+    oldbit = (addressMode(zero_page_x, arg, reg, memory) & 0x80) >> 7;
+    reg->a <<= 1;
+    last_value = *addressModePtr(zero_page_x, arg, reg, memory) |= reg->p.C;
+    reg->p.C = oldbit;
+
+    reg->pc += 2;
+    cycle += 6;
+    break;
+
+  case 0x2e:
+    oldbit = (addressMode(absolute, arg, reg, memory) & 0x80) >> 7;
+    reg->a <<= 1;
+    last_value = *addressModePtr(absolute, arg, reg, memory) |= reg->p.C;
+    reg->p.C = oldbit;
+
+    reg->pc += 3;
+    cycle += 6;
+    break;
+ 
+  case 0x3e:
+    oldbit = (addressMode(absolute_x, arg, reg, memory) & 0x80) >> 7;
+    reg->a <<= 1;
+    last_value = *addressModePtr(absolute_x, arg, reg, memory) |= reg->p.C;
+    reg->p.C = oldbit;
+
+    reg->pc += 3;
+    cycle += 7;
+    break; 
+
+  default:
+    return 0;
+  }
+
+  if (last_value == 0)
+    reg->p.Z = 1;
+  if (last_value < 0)
+    reg->p.N = 1;
+
+  return 1;
+}
+
+int ror_opcode(t_registers *reg, t_mem *memory) {
+
+  int last_value, oldbit = 0;
+  uint8_t op = *memory[reg->pc];
+  union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
+  switch (op)
+  {
+  case 0x6a:
+    oldbit = reg->a & 0x01;
+    reg->a >>= 1;
+    last_value = reg->a |= reg->p.C << 7;
+    reg->p.C = oldbit;
+
+    reg->pc += 1;
+    cycle += 2;
+    break;
+
+  case 0x66:
+    oldbit = addressMode(zero_page, arg, reg, memory) & 0x01;
+    reg->a >>= 1;
+    last_value = *addressModePtr(zero_page, arg, reg, memory) |= reg->p.C << 7;
+    reg->p.C = oldbit;
+
+    reg->pc += 2;
+    cycle += 5;
+    break;
+
+  case 0x76:
+    oldbit = addressMode(zero_page_x, arg, reg, memory) & 0x01;
+    reg->a >>= 1;
+    last_value = *addressModePtr(zero_page_x, arg, reg, memory) |= reg->p.C << 7;
+    reg->p.C = oldbit;
+
+    reg->pc += 2;
+    cycle += 6;
+    break;
+
+  case 0x6e:
+    oldbit = addressMode(absolute, arg, reg, memory) & 0x01;
+    reg->a >>= 1;
+    last_value = *addressModePtr(absolute, arg, reg, memory) |= reg->p.C << 7;
+    reg->p.C = oldbit;
+
+    reg->pc += 3;
+    cycle += 6;
+    break;
+ 
+  case 0x7e:
+    oldbit = addressMode(absolute_x, arg, reg, memory) & 0x01;
+    reg->a >>= 1;
+    last_value = *addressModePtr(absolute_x, arg, reg, memory) |= reg->p.C << 7;
+    reg->p.C = oldbit;
+
+    reg->pc += 3;
+    cycle += 7;
+    break; 
+
+  default:
+    return 0;
+  }
+
+  if (last_value == 0)
+    reg->p.Z = 1;
+  if (last_value < 0)
+    reg->p.N = 1;
+
+  return 1;
+}
+
 void run(t_mem *memory, size_t size, t_registers *reg) {
 
   VB0(printf("RUN 6502 with a memory of %zu octets", size));
@@ -1572,6 +1710,8 @@ void run(t_mem *memory, size_t size, t_registers *reg) {
     res += sta_opcode(reg, memory);
     res += stx_opcode(reg, memory);
     res += sty_opcode(reg, memory);
+    res += rol_opcode(reg, memory);
+    res += ror_opcode(reg, memory);
     assert(res < 2);
     if (res) {
       // found
