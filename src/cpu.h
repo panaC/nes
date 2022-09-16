@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "bus.h"
 
 union u16 {
 
@@ -69,8 +70,6 @@ typedef enum e_mode {
   indirect_y,
 } t_e_mode;
 
-#define MEM_SIZE 1024 // 64KB // 2 ^16 // 65536
-typedef uint8_t* t_mem;
 
 void irq(t_registers *reg, t_mem *memory);
 void run(t_mem *memory, size_t size, t_registers *reg);

@@ -16,6 +16,7 @@ uint32_t cycle = 0;
 
 // TODO
 // verfier à qui le bus est attribué : implémenter la table mémoire avec du log
+// propre aà system nes : pour le cpu : gérer une macro MEM qui retourne le ptr
 
 
 // TODO
@@ -61,17 +62,17 @@ uint8_t* addressModePtr(t_e_mode mode, union u16 arg, t_registers *reg, t_mem *m
   switch (mode)
   {
   case zero_page:
-    return memory[arg.lsb];
+    return MEM_PTR(memory, arg.lsb);
   case zero_page_x:
-    return memory[(arg.lsb + reg->x) % 256];
+    return MEM_PTR(memory, (arg.lsb + reg->x) % 256);
   case zero_page_y:
-    return memory[(arg.lsb + reg->y) % 256];
+    return MEM_PTR(memory, (arg.lsb + reg->y) % 256);
   case absolute:
-    return memory[arg.value];
+    return MEM_PTR(memory, arg.value);
   case absolute_x:
-    return memory[arg.value + reg->x];
+    return MEM_PTR(memory, arg.value + reg->x);
   case absolute_y:
-    return memory[arg.value + reg->y];
+    return MEM_PTR(memory, arg.value + reg->y);
   case indirect_x:
     return memory[*memory[(arg.lsb + reg->x) % 256] + *memory[(arg.lsb + reg->x + 1) % 256] * 256];
   case indirect_y:
