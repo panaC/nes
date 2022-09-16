@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 #include "cpu.h"
 #include "debug.h"
 
@@ -20,8 +21,23 @@ uint32_t cycle = 0;
 // TODO
 // implémenter une table de cycle avec les instructions et leur cycles correcspondant 
 // permet de créer une machine aà état finis sur l'enchainenement des instructions, la logique de l'instruction sera déclenchée une fois que le cycle est complet (a voir dans le futur si toujours vrais)
+// attention car table de cycle pas possible pour les instructions avec page crossed cycle .. comment faire ?
 
 
+// https://www.pagetable.com/?p=410
+void init(t_registers *reg, t_mem *memory) {
+
+  assert(MEM_SIZE == 64 * 1024);
+  union u16 addr = {.lsb = *memory[0xfffc], .msb = *memory[0xfffd]};
+  reg->pc = addr.value;
+  reg->a = reg->x = reg->y = 0;
+  reg->p.value = 0x34;
+  reg->sp = 0xfd;
+  *memory[0x4017] = 0;
+  *memory[0x4015] = 0;
+  bzero(memory[0x4000], 16);
+  bzero(memory[0x4010], 4);
+}
 
 void check_processor_status(int32_t lastValue, int8_t value, t_registers *reg)
 {
@@ -502,21 +518,25 @@ int clr_opcode(t_registers *reg, t_mem *memory) {
   switch (op)
   {
   case 0x18:
+    VB2(printf("clc opcode implied"));
     // clc
     reg->p.C = 0;
     break;
   
   case 0xd8:
+    VB2(printf("cld opcode implied"));
     // cld
     reg->p.D = 0;
     break;
 
   case 0x58:
+    VB2(printf("cli opcode implied"));
     // cli
     reg->p.I = 0;
     break;
 
   case 0xb8:
+    VB2(printf("clv opcode implied"));
     // clv
     reg->p.V = 0;
     break;
@@ -536,17 +556,20 @@ int set_opcode(t_registers *reg, t_mem *memory) {
   switch (op)
   {
   case 0x38:
+    VB2(printf("sec opcode implied"));
     // sec
     reg->p.C = 1;
     break;
   
   case 0xf8:
     // sed
+    VB2(printf("sed opcode implied"));
     reg->p.D = 1;
     break;
 
   case 0x78:
     // sei
+    VB2(printf("sei opcode implied"));
     reg->p.I = 1;
     break;
 
@@ -565,36 +588,42 @@ int trs_opcode(t_registers *reg, t_mem *memory) {
   switch (op)
   {
   case 0xaa:
+    VB2(printf("tax opcode implied"));
     // tax
     reg->x = reg->a;
     check_processor_status(reg->x, reg->x, reg);
     break;
   
   case 0xa8:
+    VB2(printf("tay opcode implied"));
     // tay
     reg->y = reg->a;
     check_processor_status(reg->y, reg->y, reg);
     break;
 
   case 0xba:
+    VB2(printf("tsx opcode implied"));
     // tsx
     reg->x = reg->sp;
     check_processor_status(reg->x, reg->x, reg);
     break;
 
   case 0x8a:
+    VB2(printf("txa opcode implied"));
     // txa
     reg->a = reg->x;
     check_processor_status(reg->a, reg->a, reg);
     break;
   
   case 0x9a:
+    VB2(printf("txs opcode implied"));
     // txs
     reg->a = reg->sp;
     // no check status
     break;
   
   case 0x98:
+    VB2(printf("tya opcode implied"));
     // tya
     reg->a = reg->y;
     check_processor_status(reg->a, reg->a, reg);
@@ -617,6 +646,7 @@ int cmp_opcode(t_registers *reg, t_mem *memory) {
   switch (op)
   {
   case 0xc9:
+    VB2(printf("cmp opcode immediate"));
     last_value = reg->a - arg.lsb;
 
     reg->pc += 2;
@@ -624,6 +654,7 @@ int cmp_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0xc5:
+    VB2(printf("cmp opcode zeropage"));
     last_value = reg->a - addressMode(zero_page, arg, reg, memory);
 
     reg->pc += 2;
@@ -631,6 +662,7 @@ int cmp_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0xd5:
+    VB2(printf("cmp opcode zeropagex"));
     last_value = reg->a - addressMode(zero_page_x, arg, reg, memory);
 
     reg->pc += 2;
@@ -638,6 +670,7 @@ int cmp_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0xcd:
+    VB2(printf("cmp opcode absolute"));
     last_value = reg->a - addressMode(absolute, arg, reg, memory);
 
     reg->pc += 3;
@@ -645,6 +678,7 @@ int cmp_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0xdd:
+    VB2(printf("cmp opcode absolutex"));
     last_value = reg->a - addressMode(absolute_x, arg, reg, memory);
 
     reg->pc += 3;
@@ -652,6 +686,7 @@ int cmp_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0xd9:
+    VB2(printf("cmp opcode absolutey"));
     last_value = reg->a - addressMode(absolute_y, arg, reg, memory);
 
     reg->pc += 3;
@@ -659,6 +694,7 @@ int cmp_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0xc1:
+    VB2(printf("cmp opcode indirectx"));
     last_value = reg->a - addressMode(indirect_x, arg, reg, memory);
 
     reg->pc += 2;
@@ -666,6 +702,7 @@ int cmp_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0xd1:
+    VB2(printf("cmp opcode indirecty"));
     last_value = reg->a - addressMode(indirect_y, arg, reg, memory);
 
     reg->pc += 2;
@@ -694,6 +731,7 @@ int cpx_opcode(t_registers *reg, t_mem *memory) {
   switch (op)
   {
   case 0xe0:
+    VB2(printf("cpx opcode immediate"));
     last_value = reg->x - arg.lsb;
 
     reg->pc += 2;
@@ -701,6 +739,7 @@ int cpx_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0xe4:
+    VB2(printf("cpx opcode zeropage"));
     last_value = reg->x - addressMode(zero_page, arg, reg, memory);
 
     reg->pc += 2;
@@ -708,6 +747,7 @@ int cpx_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0xec:
+    VB2(printf("cpx opcode absolute"));
     last_value = reg->x - addressMode(absolute, arg, reg, memory);
 
     reg->pc += 3;
@@ -736,6 +776,7 @@ int cpy_opcode(t_registers *reg, t_mem *memory) {
   switch (op)
   {
   case 0xc0:
+    VB2(printf("cpy opcode immediate"));
     last_value = reg->y - arg.lsb;
 
     reg->pc += 2;
@@ -743,6 +784,7 @@ int cpy_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0xc4:
+    VB2(printf("cpy opcode zeropage"));
     last_value = reg->y - addressMode(zero_page, arg, reg, memory);
 
     reg->pc += 2;
@@ -750,6 +792,7 @@ int cpy_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0xcc:
+    VB2(printf("cpy opcode absolute"));
     last_value = reg->y - addressMode(absolute, arg, reg, memory);
 
     reg->pc += 3;
@@ -778,6 +821,7 @@ int dec_opcode(t_registers *reg, t_mem *memory) {
   switch (op)
   {
   case 0xc6:
+    VB2(printf("dec opcode immediate"));
     last_value = *memory[*memory[arg.lsb]] -= 1;
 
     reg->pc += 2;
@@ -785,18 +829,21 @@ int dec_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0xd6:
+    VB2(printf("dec opcode zeropagex"));
     last_value = *memory[*memory[(arg.lsb + reg->x) % 256]] -= 1;
 
     reg->pc += 2;
     cycle += 6;
 
   case 0xce:
+    VB2(printf("dec opcode absolute"));
     last_value = *memory[arg.value] -= 1;
 
     reg->pc += 3;
     cycle += 6;
   
   case 0xde:
+    VB2(printf("dec opcode absolutex"));
     last_value = *memory[arg.value + reg->x] -= 1;
 
     reg->pc += 3;
@@ -823,6 +870,7 @@ int inc_opcode(t_registers *reg, t_mem *memory) {
   switch (op)
   {
   case 0xe6:
+    VB2(printf("inc opcode immediate"));
     last_value = *memory[*memory[arg.lsb]] += 1;
 
     reg->pc += 2;
@@ -830,18 +878,21 @@ int inc_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0xf6:
+    VB2(printf("inc opcode zeropagex"));
     last_value = *memory[*memory[(arg.lsb + reg->x) % 256]] += 1;
 
     reg->pc += 2;
     cycle += 6;
 
   case 0xee:
+    VB2(printf("inc opcode absolute"));
     last_value = *memory[arg.value] += 1;
 
     reg->pc += 3;
     cycle += 6;
   
   case 0xfe:
+    VB2(printf("inc opcode absolutex"));
     last_value = *memory[arg.value + reg->x] += 1;
 
     reg->pc += 3;
@@ -865,6 +916,7 @@ int dex_opcode(t_registers *reg, t_mem *memory) {
   uint8_t op = *memory[reg->pc];
   if (op == 0xca)
   {
+    VB2(printf("dex opcode implied"));
     reg->x -= 1;
     if (reg->x == 0)
       reg->p.Z = 1;
@@ -882,6 +934,7 @@ int dey_opcode(t_registers *reg, t_mem *memory) {
   uint8_t op = *memory[reg->pc];
   if (op == 0x88)
   {
+    VB2(printf("dey opcode implied"));
     reg->y -= 1;
     if (reg->y == 0)
       reg->p.Z = 1;
@@ -899,6 +952,7 @@ int inx_opcode(t_registers *reg, t_mem *memory) {
   uint8_t op = *memory[reg->pc];
   if (op == 0xe8)
   {
+    VB2(printf("inx opcode implied"));
     reg->x += 1;
     if (reg->x == 0)
       reg->p.Z = 1;
@@ -916,6 +970,7 @@ int iny_opcode(t_registers *reg, t_mem *memory) {
   uint8_t op = *memory[reg->pc];
   if (op == 0xc8)
   {
+    VB2(printf("iny opcode implied"));
     reg->y += 1;
     if (reg->y == 0)
       reg->p.Z = 1;
@@ -936,6 +991,7 @@ int eor_opcode(t_registers *reg, t_mem *memory) {
   switch (op)
   {
   case 0x49:
+    VB2(printf("eor opcode immediate"));
     last_value = reg->a ^ arg.lsb;
 
     reg->pc += 2;
@@ -943,6 +999,7 @@ int eor_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0x45:
+    VB2(printf("eor opcode zeropage"));
     last_value = reg->a ^ addressMode(zero_page, arg, reg, memory);
 
     reg->pc += 2;
@@ -950,6 +1007,7 @@ int eor_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0x55:
+    VB2(printf("eor opcode zeropagex"));
     last_value = reg->a ^ addressMode(zero_page_x, arg, reg, memory);
 
     reg->pc += 2;
@@ -957,6 +1015,7 @@ int eor_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0x4d:
+    VB2(printf("eor opcode absolute"));
     last_value = reg->a ^ addressMode(absolute, arg, reg, memory);
 
     reg->pc += 3;
@@ -964,6 +1023,7 @@ int eor_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0x5d:
+    VB2(printf("eor opcode absolutex"));
     last_value = reg->a ^ addressMode(absolute_x, arg, reg, memory);
 
     reg->pc += 3;
@@ -971,6 +1031,7 @@ int eor_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0x59:
+    VB2(printf("eor opcode absolutey"));
     last_value = reg->a ^ addressMode(absolute_y, arg, reg, memory);
 
     reg->pc += 3;
@@ -978,6 +1039,7 @@ int eor_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0x41:
+    VB2(printf("eor opcode indirectx"));
     last_value = reg->a ^ addressMode(indirect_x, arg, reg, memory);
 
     reg->pc += 2;
@@ -985,6 +1047,7 @@ int eor_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0x51:
+    VB2(printf("eor opcode indirecty"));
     last_value = reg->a ^ addressMode(indirect_y, arg, reg, memory);
 
     reg->pc += 2;
@@ -1011,11 +1074,14 @@ int jmp_opcode(t_registers *reg, t_mem *memory) {
   switch (op)
   {
   case 0x4c:
+    VB2(printf("jmp opcode immediate"));
     reg->pc += arg.value; // TODO/QUESTION jump is after opcode jmp or before ?
     cycle += 3;
     break;
   
   case 0x6c:
+    VB2(printf("jmp opcode indirect"));
+    VB2(printf("TODO !! need to implement it"));
     reg->pc += 3; // TODO: how to do indirect jump ? https://www.nesdev.org/obelisk-6502-guide/addressing.html#IND
     cycle += 5;
     break;
@@ -1034,6 +1100,7 @@ int lda_opcode(t_registers *reg, t_mem *memory) {
   switch (op)
   {
   case 0xa9:
+    VB2(printf("lda opcode immediate"));
     reg->a = arg.lsb;
 
     reg->pc += 2;
@@ -1041,6 +1108,7 @@ int lda_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0xa5:
+    VB2(printf("lda opcode zeropage"));
     reg->a = addressMode(zero_page, arg, reg, memory);
 
     reg->pc += 2;
@@ -1048,6 +1116,7 @@ int lda_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0xb5:
+    VB2(printf("lda opcode zeropagex"));
     reg->a = addressMode(zero_page_x, arg, reg, memory);
 
     reg->pc += 2;
@@ -1055,6 +1124,7 @@ int lda_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0xad:
+    VB2(printf("lda opcode absolute"));
     reg->a = addressMode(absolute, arg, reg, memory);
 
     reg->pc += 3;
@@ -1062,6 +1132,7 @@ int lda_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0xbd:
+    VB2(printf("lda opcode absolutex"));
     reg->a = addressMode(absolute_x, arg, reg, memory);
 
     reg->pc += 3;
@@ -1069,6 +1140,7 @@ int lda_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0xb9:
+    VB2(printf("lda opcode absolutey"));
     reg->a = addressMode(absolute_y, arg, reg, memory);
 
     reg->pc += 3;
@@ -1076,6 +1148,7 @@ int lda_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0xa1:
+    VB2(printf("lda opcode indirectx"));
     reg->a = addressMode(indirect_x, arg, reg, memory);
 
     reg->pc += 2;
@@ -1083,6 +1156,7 @@ int lda_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0xb1:
+    VB2(printf("lda opcode indirecty"));
     reg->a = addressMode(indirect_y, arg, reg, memory);
 
     reg->pc += 2;
@@ -1108,6 +1182,7 @@ int ldx_opcode(t_registers *reg, t_mem *memory) {
   switch (op)
   {
   case 0xa2:
+    VB2(printf("ldx opcode immediate"));
     reg->x = arg.lsb;
 
     reg->pc += 2;
@@ -1115,6 +1190,7 @@ int ldx_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0xa6:
+    VB2(printf("ldx opcode zeropage"));
     reg->x = addressMode(zero_page, arg, reg, memory);
 
     reg->pc += 2;
@@ -1122,6 +1198,7 @@ int ldx_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0xb6:
+    VB2(printf("ldx opcode zeropagey"));
     reg->x = addressMode(zero_page_y, arg, reg, memory);
 
     reg->pc += 2;
@@ -1129,6 +1206,7 @@ int ldx_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0xae:
+    VB2(printf("ldx opcode absolute"));
     reg->x = addressMode(absolute, arg, reg, memory);
 
     reg->pc += 3;
@@ -1136,6 +1214,7 @@ int ldx_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0xbe:
+    VB2(printf("ldx opcode absolutey"));
     reg->x = addressMode(absolute_y, arg, reg, memory);
 
     reg->pc += 3;
@@ -1161,6 +1240,7 @@ int ldy_opcode(t_registers *reg, t_mem *memory) {
   switch (op)
   {
   case 0xa0:
+    VB2(printf("ldy opcode immediate"));
     reg->a = arg.lsb;
 
     reg->pc += 2;
@@ -1168,6 +1248,7 @@ int ldy_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0xa4:
+    VB2(printf("ldy opcode zeropage"));
     reg->y = addressMode(zero_page, arg, reg, memory);
 
     reg->pc += 2;
@@ -1175,6 +1256,7 @@ int ldy_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0xb4:
+    VB2(printf("ldy opcode zeropagex"));
     reg->y = addressMode(zero_page_x, arg, reg, memory);
 
     reg->pc += 2;
@@ -1182,6 +1264,7 @@ int ldy_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0xac:
+    VB2(printf("ldy opcode absolute"));
     reg->y = addressMode(absolute, arg, reg, memory);
 
     reg->pc += 3;
@@ -1189,6 +1272,7 @@ int ldy_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0xbc:
+    VB2(printf("ldy opcode absolutex"));
     reg->y = addressMode(absolute_x, arg, reg, memory);
 
     reg->pc += 3;
@@ -1497,6 +1581,7 @@ int rol_opcode(t_registers *reg, t_mem *memory) {
   switch (op)
   {
   case 0x2a:
+    VB2(printf("rol opcode immediate"));
     oldbit = (reg->a & 0x80) >> 7;
     reg->a <<= 1;
     reg->a = reg->a | reg->p.C;
@@ -1507,6 +1592,7 @@ int rol_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0x26:
+    VB2(printf("rol opcode zeropage"));
     oldbit = (addressMode(zero_page, arg, reg, memory) & 0x80) >> 7;
     reg->a <<= 1;
     last_value = *addressModePtr(zero_page, arg, reg, memory) |= reg->p.C;
@@ -1517,6 +1603,7 @@ int rol_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0x36:
+    VB2(printf("rol opcode zeropagex"));
     oldbit = (addressMode(zero_page_x, arg, reg, memory) & 0x80) >> 7;
     reg->a <<= 1;
     last_value = *addressModePtr(zero_page_x, arg, reg, memory) |= reg->p.C;
@@ -1527,6 +1614,7 @@ int rol_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0x2e:
+    VB2(printf("rol opcode absolute"));
     oldbit = (addressMode(absolute, arg, reg, memory) & 0x80) >> 7;
     reg->a <<= 1;
     last_value = *addressModePtr(absolute, arg, reg, memory) |= reg->p.C;
@@ -1537,6 +1625,7 @@ int rol_opcode(t_registers *reg, t_mem *memory) {
     break;
  
   case 0x3e:
+    VB2(printf("rol opcode absolutex"));
     oldbit = (addressMode(absolute_x, arg, reg, memory) & 0x80) >> 7;
     reg->a <<= 1;
     last_value = *addressModePtr(absolute_x, arg, reg, memory) |= reg->p.C;
@@ -1566,6 +1655,7 @@ int ror_opcode(t_registers *reg, t_mem *memory) {
   switch (op)
   {
   case 0x6a:
+    VB2(printf("ror opcode immediate"));
     oldbit = reg->a & 0x01;
     reg->a >>= 1;
     last_value = reg->a |= reg->p.C << 7;
@@ -1576,6 +1666,7 @@ int ror_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0x66:
+    VB2(printf("ror opcode zeropage"));
     oldbit = addressMode(zero_page, arg, reg, memory) & 0x01;
     reg->a >>= 1;
     last_value = *addressModePtr(zero_page, arg, reg, memory) |= reg->p.C << 7;
@@ -1586,6 +1677,7 @@ int ror_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0x76:
+    VB2(printf("ror opcode zeropagex"));
     oldbit = addressMode(zero_page_x, arg, reg, memory) & 0x01;
     reg->a >>= 1;
     last_value = *addressModePtr(zero_page_x, arg, reg, memory) |= reg->p.C << 7;
@@ -1596,6 +1688,7 @@ int ror_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0x6e:
+    VB2(printf("ror opcode absolute"));
     oldbit = addressMode(absolute, arg, reg, memory) & 0x01;
     reg->a >>= 1;
     last_value = *addressModePtr(absolute, arg, reg, memory) |= reg->p.C << 7;
@@ -1606,6 +1699,7 @@ int ror_opcode(t_registers *reg, t_mem *memory) {
     break;
  
   case 0x7e:
+    VB2(printf("ror opcode absolutex"));
     oldbit = addressMode(absolute_x, arg, reg, memory) & 0x01;
     reg->a >>= 1;
     last_value = *addressModePtr(absolute_x, arg, reg, memory) |= reg->p.C << 7;
@@ -1633,6 +1727,7 @@ int jsr_opcode(t_registers *reg, t_mem *memory) {
   union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
   union u16 pc = {0};
   if (op == 0x20) {
+    VB2(printf("jsr opcode absolute"));
     pc.value = reg->pc += 2;
     *memory[0x01ff - reg->sp] = pc.msb;
     reg->sp--;
@@ -1652,6 +1747,7 @@ int rts_opcode(t_registers *reg, t_mem *memory) {
   union u16 arg = {.lsb = *memory[reg->pc + 1], .msb = *memory[reg->pc + 2]};
   union u16 pc = {0};
   if (op == 0x60) {
+    VB2(printf("rts opcode implied"));
     reg->sp++;
     pc.lsb = *memory[0x01ff - reg->sp];
     reg->sp++;
@@ -1670,6 +1766,7 @@ int psp_opcode(t_registers *reg, t_mem *memory) {
   switch (op)
   {
   case 0x48:
+    VB2(printf("pha opcode implied"));
     *memory[0x01ff - reg->sp] = reg->a;
     reg->sp--;
     reg->pc += 1;
@@ -1677,6 +1774,7 @@ int psp_opcode(t_registers *reg, t_mem *memory) {
     break;
   
   case 0x08:
+    VB2(printf("php opcode implied"));
     *memory[0x01ff - reg->sp] = reg->p.value;
     reg->sp--;
     reg->pc += 1;
@@ -1684,6 +1782,7 @@ int psp_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0x68:
+    VB2(printf("pla opcode implied"));
     reg->sp++;
     reg->a = *memory[0x01ff - reg->sp];
     check_processor_status(reg->a, reg->a, reg);
@@ -1692,6 +1791,7 @@ int psp_opcode(t_registers *reg, t_mem *memory) {
     break;
 
   case 0x28:
+    VB2(printf("plp opcode implied"));
     reg->sp++;
     reg->p.value = *memory[0x01ff - reg->sp];
     reg->pc += 1;
@@ -1703,6 +1803,41 @@ int psp_opcode(t_registers *reg, t_mem *memory) {
   }
 
   return 1;
+}
+
+int brk_opcode(t_registers *reg, t_mem *memory) {
+
+  uint8_t op = *memory[reg->pc];
+  if (op == 0) {
+    VB2(printf("brk opcode"));
+    irq(reg, memory);
+    reg->p.B = 1;
+
+    return 1;
+  }
+  return 0;
+}
+
+// global function
+void reset(t_registers *reg, t_mem *memory) {
+  // https://www.pagetable.com/?p=410
+  // TODO
+}
+
+void irq(t_registers *reg, t_mem *memory) {
+  union u16 pc = {.value = reg->pc};
+  pc.value = reg->pc += 2;
+  *memory[0x01ff - reg->sp] = pc.msb;
+  reg->sp--;
+  *memory[0x01ff - reg->sp] = pc.lsb;
+  reg->sp--;
+  *memory[0x01ff - reg->sp] = reg->p.value;
+  reg->sp--;
+  union u16 brk = {.lsb = *memory[0xfffe], .msb = *memory[0xffff]};
+  reg->pc = brk.value;
+  reg->p.B = 0; // clear b flags
+
+  cycle += 7;
 }
 
 void run(t_mem *memory, size_t size, t_registers *reg) {
@@ -1732,10 +1867,15 @@ void run(t_mem *memory, size_t size, t_registers *reg) {
   while(1) {
     int res = 0;
     uint8_t op = *memory[reg->pc];
-    if (op == 0) {
+#ifdef DEBUG_CPU
+    if (op == 0)
+    {
       // break;
       return;
     }
+#else
+    res += brk_opcode(reg, memory);
+#endif
     if (op == 0xea) {
       // nop
       reg->pc += 1;

@@ -60,6 +60,9 @@ https://github.com/christopherpow/nes-test-roms
 
 
 
+
+
+
 === some links ===
 
 https://github.com/yizhang82/neschan
@@ -89,4 +92,13 @@ https://www.nesdev.org/wiki/Emulator_tests
 https://github.com/christopherpow/nes-test-roms/tree/master/nes_instr_test
 
 
+=== how to nes ebook ===
+https://bugzmanov.github.io/nes_ebook/chapter_1.html
+
+
+=== create a nes game ===
+https://nerdy-nights.nes.science/
+
+=== test 6502 with a snake game ===
+http://skilldrick.github.io/easy6502/#snake
 
