@@ -13,6 +13,14 @@ uint32_t cycle = 0;
 // vérfier que l'addresse demandé en mémoire existe bien. Et print une error
 // Faire ça avec une macro
 
+// TODO
+// verfier à qui le bus est attribué : implémenter la table mémoire avec du log
+
+
+// TODO
+// implémenter une table de cycle avec les instructions et leur cycles correcspondant 
+// permet de créer une machine aà état finis sur l'enchainenement des instructions, la logique de l'instruction sera déclenchée une fois que le cycle est complet (a voir dans le futur si toujours vrais)
+
 
 
 void check_processor_status(int32_t lastValue, int8_t value, t_registers *reg)

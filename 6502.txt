@@ -45,6 +45,13 @@ déboguer avec les vrais ROM NEs
 
 
 
+=== File Format ===
+
+https://www.nesdev.org/wiki/INES
+http://fms.komkon.org/EMUL8/NES.html#LABM
+
+=> test rom
+https://github.com/christopherpow/nes-test-roms
 
 
 
