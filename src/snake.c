@@ -1,5 +1,6 @@
 #include "snake.h"
 #include "stdint.h"
+#include "utils.h"
 
 uint8_t rom[] = {
   0x20, 0x06, 0x06, 0x20, 0x38, 0x06, 0x20, 0x0d, 0x06, 0x20, 0x2a, 0x06, 0x60, 0xa9, 0x02, 0x85,
@@ -21,17 +22,26 @@ uint8_t rom[] = {
   0x01, 0x60, 0xe6, 0x11, 0xa9, 0x06, 0xc5, 0x11, 0xf0, 0x0c, 0x60, 0xc6, 0x10, 0xa5, 0x10, 0x29,
   0x1f, 0xc9, 0x1f, 0xf0, 0x01, 0x60, 0x4c, 0x35, 0x07, 0xa0, 0x00, 0xa5, 0xfe, 0x91, 0x00, 0x60,
   0xa6, 0x03, 0xa9, 0x00, 0x81, 0x10, 0xa2, 0x00, 0xa9, 0x01, 0x81, 0x10, 0x60, 0xa2, 0x00, 0xea,
-  0xea, 0xca, 0xd0, 0xfb, 0x60,
+  0xea, 0xca, 0xd0, 0xfb, 0x60, 0x00, // game-over
 };
+
+#define START 0x600
 
 void snake(t_mem *memory) {
 
   // memory map
   // 0x000 -> 0x0ff : variable
+  // 0x100 -> 0x1ff : stack
   // 0x200 -> 0x5ff : screen 32 * 32
-  // 0x700 -> 0x8ff : rom
+  // 0x600 -> sizeof(rom) : rom
   // memory_size = 0x1000 : 16 * 256 : 4kB
 
+
+  for(int i = 0; i < sizeof(rom); i++) {
+    memory[START + i] = rom + i;
+  }
+
+  hexdump(*(memory + START), 320);
 
 // 1/ launch SDL
 // 2/ launch CPU
@@ -39,13 +49,8 @@ void snake(t_mem *memory) {
 // 4/ display buffer 0x200 -> 0x5ff -> 32 * 32
 //        grid of 640 * 640 -> *20 -> pitch 20pixels
 
-
-// TODO: connecter le bus aà la memoire vive, le buffer screen, et la rom;
-// Faire une fonction d'acces aà la mémoire qui check aà qui parler et observer ce qui se passe sur le bus !?
-// comment faire cça ? , je pense que faire un getter et un setter en c en mode observable n'est pas possible : laisser juste écrire dans la mémoire et loggé les actions
-
   t_registers reg = {
-      .pc = 0x700,
+      .pc = START,
       .sp = 0,
       .p = 0,
       .a = 0,
@@ -56,5 +61,7 @@ void snake(t_mem *memory) {
   while (quit != -1) {
     quit = exec(memory, &reg); 
   }
+
+  hexdumpSnake(*(memory + 0x200), 1024);
 
 }

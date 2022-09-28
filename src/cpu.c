@@ -372,16 +372,15 @@ int bcs_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
   return 0;
 }
 
-int bce_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
+int beq_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
 
   if (op == 0xf0) {
-    VB2(printf("bce opcode relative"));
+    VB2(printf("beq opcode relative"));
 
     if (reg->p.Z == 1) {
       reg->pc += readbus(memory, reg->pc + 1);
-    } else {
-      reg->pc += 2;
     }
+    reg->pc += 2; // in both case
     cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
     return 1;
   }
@@ -1695,7 +1694,7 @@ int jsr_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   union u16 pc = {0};
   if (op == 0x20) {
     VB2(printf("jsr opcode absolute"));
-    pc.value = reg->pc += 2;
+    pc.value = reg->pc += 3;
     writebus(memory, 0x01ff - reg->sp, pc.msb);
     reg->sp--;
     writebus(memory, 0x01ff - reg->sp, pc.lsb);
@@ -1812,6 +1811,7 @@ int exec(t_mem *memory, t_registers *reg) {
   if (op == 0)
   {
     // break;
+    VB1(printf("DEBUG_CPU BREAK"));
     return -1;
   }
 #else
@@ -1822,7 +1822,7 @@ int exec(t_mem *memory, t_registers *reg) {
   res += asl_opcode(reg, memory, op, addr);
   res += bcc_opcode(reg, memory, op);
   res += bcs_opcode(reg, memory, op);
-  res += bce_opcode(reg, memory, op);
+  res += beq_opcode(reg, memory, op);
   res += bit_opcode(reg, memory, op, addr);
   res += bmi_opcode(reg, memory, op);
   res += bne_opcode(reg, memory, op);
@@ -1866,6 +1866,8 @@ int exec(t_mem *memory, t_registers *reg) {
 
   VB4(print_register(reg));
   VB4(printf("cycle=%d", cycle));
+
+  if (op == 0xf0) printf("--------\n");
 
   return 0;
 }

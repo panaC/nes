@@ -29,3 +29,15 @@ void hexdump(const void* data, size_t size) {
 		}
 	}
 }
+
+void hexdumpSnake(const void* data, size_t size) {
+	size_t i, j;
+	for (i = 0; i < size; ++i) {
+		printf("%02X ", ((unsigned char*)data)[i]);
+
+		if ((i + 1) % 32 == 0)
+		{
+			printf("\n");
+		}
+	}
+}
