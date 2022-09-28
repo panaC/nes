@@ -690,12 +690,9 @@ int cmp_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     return 0;
   }
 
-  if (last_value == 0)
-    reg->p.Z = 1;
-  if (last_value > 0)
-    reg->p.C = 1;
-  if (last_value < 0)
-    reg->p.N = 1;
+  reg->p.Z = last_value == 0 ? 1 : 0;
+  reg->p.C = last_value > 0 ? 1 : 0;
+  reg->p.N = last_value < 0 ? 1 : 0;
   
   return 1;
 }
@@ -733,13 +730,10 @@ int cpx_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     return 0;
   }
 
-  if (last_value == 0)
-    reg->p.Z = 1;
-  if (last_value > 0)
-    reg->p.C = 1;
-  if (last_value < 0)
-    reg->p.N = 1;
-  
+  reg->p.Z = last_value == 0 ? 1 : 0;
+  reg->p.C = last_value > 0 ? 1 : 0;
+  reg->p.N = last_value < 0 ? 1 : 0;
+
   return 1;
 }
 
@@ -776,12 +770,9 @@ int cpy_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     return 0;
   }
 
-  if (last_value == 0)
-    reg->p.Z = 1;
-  if (last_value > 0)
-    reg->p.C = 1;
-  if (last_value < 0)
-    reg->p.N = 1;
+  reg->p.Z = last_value == 0 ? 1 : 0;
+  reg->p.C = last_value > 0 ? 1 : 0;
+  reg->p.N = last_value < 0 ? 1 : 0;
   
   return 1;
 }
