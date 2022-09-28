@@ -6,6 +6,7 @@
 #include "debug.h"
 #include "parser.h"
 #include "sdl.h"
+#include "snake.h"
 
 int global_verbose_level = 5;
 
@@ -20,13 +21,14 @@ int main(int argc, char **argv) {
   }
 
   // run(&memory[0], MEM_SIZE, 0, NULL);
-  // run_test(&memory[0]);
+  run_test(&memory[0]);
   // if (argc > 1) {
   //   parse(argv[1]);
   // } else 
   //  puts("no file to parse");
 
-  sdl_init();
+  // sdl_init();
+  // snake(&memory[0]);
 
   free(rawmem);
   return 0;

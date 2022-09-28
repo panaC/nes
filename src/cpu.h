@@ -5,17 +5,6 @@
 #include <stdint.h>
 #include "bus.h"
 
-union u16 {
-
-  uint16_t value;
-
-  struct {
-
-    uint8_t lsb;
-    uint8_t msb;
-  };
-};
-
 union u_p {
 
   uint8_t value;
@@ -73,5 +62,6 @@ typedef enum e_mode {
 
 void irq(t_registers *reg, t_mem *memory);
 void run(t_mem *memory, size_t size, t_registers *reg);
+int exec(t_mem *memory, t_registers *reg);
 
 #endif
