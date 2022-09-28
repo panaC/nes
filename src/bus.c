@@ -1,7 +1,7 @@
 #include <stdio.h>
+#include <stdlib.h> 
 #include "bus.h"
 #include "debug.h"
-
 
 // TODO:
 // create a memory table with human readable name to print in bus debug
@@ -13,6 +13,14 @@ union u16 readbus16(t_mem *memory, uint32_t addr) {
 
 uint8_t readbus(t_mem *memory, uint32_t addr) {
   VB3(printf("BUS: READ=0x%x VALUE=%d/%d/0x%x", addr, MEM_GET(memory, addr), (int8_t)MEM_GET(memory, addr), MEM_GET(memory, addr)));
+
+
+  if (addr == 0xfe) {
+    // rand
+    int v = rand() % 256;
+    printf("BUS: rand value %d\n", v);
+    return v;
+  }
   return MEM_GET(memory, addr);
 }
 void writebus(t_mem *memory, uint32_t addr, uint8_t value) {
