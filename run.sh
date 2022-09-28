@@ -1,1 +1,1 @@
-gcc -DDEBUG_CPU src/main.c src/cpu.c src/test.c src/utils.c src/debug.c src/parser.c -o nes && ./nes $@
+gcc -DDEBUG_CPU  -I/usr/local/include src/main.c src/cpu.c src/test.c src/utils.c src/debug.c src/parser.c src/sdl.c -lSDL2-2.0.0 -o nes && ./nes $@
