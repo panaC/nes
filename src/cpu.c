@@ -347,9 +347,8 @@ int bcc_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
 
     if (reg->p.C == 0) {
       reg->pc += readbus(memory, reg->pc + 1);
-    } else {
-      reg->pc += 2;
     }
+    reg->pc += 2;
     cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
     return 1;
   }
@@ -363,9 +362,8 @@ int bcs_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
 
     if (reg->p.C == 1) {
       reg->pc += readbus(memory, reg->pc + 1);
-    } else {
-      reg->pc += 2;
     }
+    reg->pc += 2;
     cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
     return 1;
   }
@@ -428,9 +426,8 @@ int bmi_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
 
     if (reg->p.N == 1) {
       reg->pc += readbus(memory, reg->pc + 1);
-    } else {
-      reg->pc += 2;
     }
+    reg->pc += 2;
     cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
     return 1;
   }
@@ -444,9 +441,8 @@ int bne_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
 
     if (reg->p.Z == 0) {
       reg->pc += readbus(memory, reg->pc + 1);
-    } else {
-      reg->pc += 2;
     }
+    reg->pc += 2;
     cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
     return 1;
   }
@@ -460,9 +456,8 @@ int bpl_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
 
     if (reg->p.N == 0) {
       reg->pc += readbus(memory, reg->pc + 1);
-    } else {
-      reg->pc += 2;
     }
+    reg->pc += 2;
     cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
     return 1;
   }
@@ -476,9 +471,8 @@ int bvc_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
 
     if (reg->p.V == 0) {
       reg->pc += readbus(memory, reg->pc + 1);
-    } else {
-      reg->pc += 2;
     }
+    reg->pc += 2;
     cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
     return 1;
   }
@@ -492,9 +486,8 @@ int bvs_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
 
     if (reg->p.V == 1) {
       reg->pc += readbus(memory, reg->pc + 1);
-    } else {
-      reg->pc += 2;
     }
+    reg->pc += 2;
     cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
     return 1;
   }
