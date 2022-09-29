@@ -45,7 +45,7 @@ void check_processor_status(int32_t lastValue, int8_t value, t_registers *reg)
   // see sbc_opcode
 }
 
-uint8_t getAddressMode(t_e_mode mode, union u16 arg, t_registers *reg, t_mem *memory) {
+uint32_t getAddressMode(t_e_mode mode, union u16 arg, t_registers *reg, t_mem *memory) {
 
   VB4(printf("addressMode arg(LSB=%x,MSB=%x,v=%x)", arg.lsb, arg.msb, arg.value));
 
