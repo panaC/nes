@@ -35,14 +35,14 @@ void check_processor_status(int32_t lastValue, int8_t value, t_registers *reg)
 
   // TODO : https://www.doc.ic.ac.uk/~eedwards/compsys/arithmetic/index.html#:~:text=Overflow%20Rule%20for%20addition,result%20has%20the%20opposite%20sign.
   // carry should be checked with the sign of the bit 7 and not from a cast to 32bit variable
-  if (lastValue > 127 || lastValue < -128)
-    reg->p.C = 1; // overflow or underflow
-  if (value == 0)
-    reg->p.Z = 1; // Zero
-  if (value < 0) // or check the bit 7 if equal one then neg
-    reg->p.N = 1; // Negatif
-  if (lastValue > value) // TODO same as carry
-    reg->p.V = 1; // overflow
+  reg->p.C = (lastValue > 127 || lastValue < -128) ? 1 : 0; // carry
+  reg->p.Z = value == 0 ? 1 : 0; // zero
+  reg->p.N = value < 0 ? 1 : 0; // neg
+  reg->p.V = lastValue > value ? 1 : 0; // overflow
+
+  // TODO:
+  // Refactor 
+  // see sbc_opcode
 }
 
 uint8_t getAddressMode(t_e_mode mode, union u16 arg, t_registers *reg, t_mem *memory) {
@@ -398,12 +398,9 @@ int bit_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   default:
     return 0;
   }
-  if (value == 0)
-    reg->p.Z = 1;
-  if (value & 0b100000)
-    reg->p.V = 1;
-  if (value & 0b1000000)
-    reg->p.N = 1;
+  reg->p.Z = (value == 0) ? 1 : 0;
+  reg->p.V = (value & 0b100000) ? 1 : 0;
+  reg->p.N = (value & 0b1000000) ? 1 : 0;
 
   return 1;
 }
@@ -809,11 +806,9 @@ int dec_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     return 0;
   }
 
-  if (last_value == 0)
-    reg->p.Z = 1;
-  if (last_value < 0)
-    reg->p.N = 1;
-  
+  reg->p.Z = last_value == 0 ? 1 : 0;
+  reg->p.N = last_value < 0 ? 1 : 0;
+
   return 1;
 }
 
@@ -860,10 +855,8 @@ int inc_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     return 0;
   }
 
-  if (last_value == 0)
-    reg->p.Z = 1;
-  if (last_value < 0)
-    reg->p.N = 1;
+  reg->p.Z = last_value == 0 ? 1 : 0;
+  reg->p.N = last_value < 0 ? 1 : 0;
   
   return 1;
 }
@@ -874,10 +867,8 @@ int dex_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
   {
     VB2(printf("dex opcode implied"));
     reg->x -= 1;
-    if (reg->x == 0)
-      reg->p.Z = 1;
-    if (reg->x < 0)
-      reg->p.N = 1;
+    reg->p.Z = reg->x == 0 ? 1 : 0;
+    reg->p.N = reg->x < 0 ? 1 : 0;
     reg->pc += 1;
     cycle += 2;
     return 1;
@@ -891,10 +882,8 @@ int dey_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
   {
     VB2(printf("dey opcode implied"));
     reg->y -= 1;
-    if (reg->y == 0)
-      reg->p.Z = 1;
-    if (reg->y < 0)
-      reg->p.N = 1;
+    reg->p.Z = reg->y == 0 ? 1 : 0;
+    reg->p.N = reg->y < 0 ? 1 : 0;
     reg->pc += 1;
     cycle += 2;
     return 1;
@@ -908,10 +897,8 @@ int inx_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
   {
     VB2(printf("inx opcode implied"));
     reg->x += 1;
-    if (reg->x == 0)
-      reg->p.Z = 1;
-    if (reg->x < 0)
-      reg->p.N = 1;
+    reg->p.Z = reg->x == 0 ? 1 : 0;
+    reg->p.N = reg->x < 0 ? 1 : 0;
     reg->pc += 1;
     cycle += 2;
     return 1;
@@ -925,10 +912,8 @@ int iny_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
   {
     VB2(printf("iny opcode implied"));
     reg->y += 1;
-    if (reg->y == 0)
-      reg->p.Z = 1;
-    if (reg->y < 0)
-      reg->p.N = 1;
+    reg->p.Z = reg->y == 0 ? 1 : 0;
+    reg->p.N = reg->y < 0 ? 1 : 0;
     reg->pc += 1;
     cycle += 2;
     return 1;
@@ -1009,11 +994,9 @@ int eor_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     return 0;
   }
 
-  if (last_value == 0)
-    reg->p.Z = 1;
-  if (last_value < 0)
-    reg->p.N = 1;
-  
+  reg->p.Z = last_value == 0 ? 1 : 0;
+  reg->p.N = last_value < 0 ? 1 : 0;
+
   return 1;
 }
 
@@ -1114,11 +1097,9 @@ int lda_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     return 0;
   }
 
-  if (reg->a == 0)
-    reg->p.Z = 1;
-  if (reg->a < 0)
-    reg->p.N = 1;
-  
+  reg->p.Z = reg->a == 0 ? 1 : 0;
+  reg->p.N = reg->a < 0 ? 1 : 0;
+
   return 1;
 }
 
@@ -1170,11 +1151,9 @@ int ldx_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     return 0;
   }
 
-  if (reg->a == 0)
-    reg->p.Z = 1;
-  if (reg->a < 0)
-    reg->p.N = 1;
-  
+  reg->p.Z = reg->a == 0 ? 1 : 0;
+  reg->p.N = reg->a < 0 ? 1 : 0;
+
   return 1;
 }
 
@@ -1226,11 +1205,9 @@ int ldy_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     return 0;
   }
 
-  if (reg->a == 0)
-    reg->p.Z = 1;
-  if (reg->a < 0)
-    reg->p.N = 1;
-  
+  reg->p.Z = reg->a == 0 ? 1 : 0;
+  reg->p.N = reg->a < 0 ? 1 : 0;
+
   return 1;
 }
 
@@ -1578,10 +1555,8 @@ int rol_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     return 0;
   }
 
-  if (last_value == 0)
-    reg->p.Z = 1;
-  if (last_value < 0)
-    reg->p.N = 1;
+  reg->p.Z = last_value == 0 ? 1 : 0;
+  reg->p.N = last_value < 0 ? 1 : 0;
 
   return 1;
 }
@@ -1654,10 +1629,8 @@ int ror_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     return 0;
   }
 
-  if (last_value == 0)
-    reg->p.Z = 1;
-  if (last_value < 0)
-    reg->p.N = 1;
+  reg->p.Z = last_value == 0 ? 1 : 0;
+  reg->p.N = last_value < 0 ? 1 : 0;
 
   return 1;;
 }
