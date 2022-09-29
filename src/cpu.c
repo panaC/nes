@@ -9,17 +9,6 @@
 // handle State Machine with cycle
 uint32_t cycle = 0; 
 
-
-// TODO : 
-// setup a memory checker
-// vérfier que l'addresse demandée en mémoire existe bien. Et print une error
-// Faire ça avec une macro
-
-// TODO
-// verfier à qui le bus est attribué : implémenter la table mémoire avec du log
-// propre aà system nes : pour le cpu : gérer une macro MEM qui retourne le ptr
-
-
 // TODO
 // implémenter une table de cycle avec les instructions et leur cycles correcspondant 
 // permet de créer une machine aà état finis sur l'enchainenement des instructions, la logique de l'instruction sera déclenchée une fois que le cycle est complet (a voir dans le futur si toujours vrais)
