@@ -194,7 +194,7 @@ int and_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   {
   case 0x29:
     VB2(printf("and opcode immediate"));
-    reg->a &= readbus(memory, reg->pc + 1);
+    reg->a &= readbus(memory, reg->pc + 1); // or arg.lsb
 
     cycle += 2;
     reg->pc += 2;
@@ -269,7 +269,7 @@ int asl_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   switch (op)
   {
   case 0x0a:
-    VB2(printf("asl opcode immediate"));
+    VB2(printf("asl opcode accumulator"));
     last_value = reg->a << 1;
     reg->a <<= 1;
 
@@ -335,7 +335,7 @@ int bcc_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
     VB2(printf("bcc opcode relative"));
 
     if (reg->p.C == 0) {
-      reg->pc += readbus(memory, reg->pc + 1);
+      reg->pc += (int8_t)readbus(memory, reg->pc + 1);
     }
     reg->pc += 2;
     cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
@@ -350,7 +350,7 @@ int bcs_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
     VB2(printf("bcs opcode relative"));
 
     if (reg->p.C == 1) {
-      reg->pc += readbus(memory, reg->pc + 1);
+      reg->pc += (int8_t)readbus(memory, reg->pc + 1);
     }
     reg->pc += 2;
     cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
@@ -365,7 +365,7 @@ int beq_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
     VB2(printf("beq opcode relative"));
 
     if (reg->p.Z == 1) {
-      reg->pc += readbus(memory, reg->pc + 1);
+      reg->pc += (int8_t)readbus(memory, reg->pc + 1);
     }
     reg->pc += 2; // in both case
     cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
@@ -411,7 +411,7 @@ int bmi_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
     VB2(printf("bmi opcode relative"));
 
     if (reg->p.N == 1) {
-      reg->pc += readbus(memory, reg->pc + 1);
+      reg->pc += (int8_t)readbus(memory, reg->pc + 1);
     }
     reg->pc += 2;
     cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
@@ -426,7 +426,7 @@ int bne_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
     VB2(printf("bne opcode relative"));
 
     if (reg->p.Z == 0) {
-      reg->pc += readbus(memory, reg->pc + 1);
+      reg->pc += (int8_t)readbus(memory, reg->pc + 1);
     }
     reg->pc += 2;
     cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
@@ -441,7 +441,7 @@ int bpl_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
     VB2(printf("bpl opcode relative"));
 
     if (reg->p.N == 0) {
-      reg->pc += readbus(memory, reg->pc + 1);
+      reg->pc += (int8_t)readbus(memory, reg->pc + 1);
     }
     reg->pc += 2;
     cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
@@ -456,7 +456,7 @@ int bvc_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
     VB2(printf("bvc opcode relative"));
 
     if (reg->p.V == 0) {
-      reg->pc += readbus(memory, reg->pc + 1);
+      reg->pc += (int8_t)readbus(memory, reg->pc + 1);
     }
     reg->pc += 2;
     cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
@@ -471,7 +471,7 @@ int bvs_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
     VB2(printf("bvs opcode relative"));
 
     if (reg->p.V == 1) {
-      reg->pc += readbus(memory, reg->pc + 1);
+      reg->pc += (int8_t)readbus(memory, reg->pc + 1);
     }
     reg->pc += 2;
     cycle += 2; // TODO (+1 if branch succeeds +2 if to a new page)
