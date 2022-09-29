@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "snake.h"
 #include "stdint.h"
 #include "utils.h"
@@ -57,8 +58,21 @@ void snake(t_mem *memory) {
       .x = 0,
       .y = 0};
 
-  int quit;
+  int quit = 0;
+  int debug = 0;
+  int brk = 0x0724;
   while (quit != -1) {
+    if (reg.pc == brk) debug = 1;
+    if (debug) {
+      int c = getchar();
+      if (c == 'p') {
+        hexdumpSnake(*(memory + 0x200), 1024);
+        continue;
+      } else if (c == 'r') {
+        debug = 0;
+      }
+      // lf 10
+    }
     quit = exec(memory, &reg); 
   }
 
