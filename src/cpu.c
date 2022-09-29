@@ -1075,14 +1075,15 @@ int jmp_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   switch (op)
   {
   case 0x4c:
-    VB2(printf("jmp opcode immediate"));
-    reg->pc += arg.value; // TODO/QUESTION jump is after opcode jmp or before ?
+    VB2(printf("jmp opcode absolute"));
+    reg->pc = arg.value;
     cycle += 3;
     break;
   
   case 0x6c:
     VB2(printf("jmp opcode indirect"));
     VB2(printf("TODO !! need to implement it"));
+    assert(0);
     reg->pc += 3; // TODO: how to do indirect jump ? https://www.nesdev.org/obelisk-6502-guide/addressing.html#IND
     cycle += 5;
     break;
