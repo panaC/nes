@@ -517,6 +517,75 @@ int clr_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
   return 1;
 }
 
+int sbc_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
+
+  switch (op)
+  {
+  case 0xe9:
+    reg->a -= arg.lsb - (1 - reg->p.C);
+    reg->pc += 2;
+    cycle += 2;
+    break;
+
+  case 0xe5:
+    reg->a -= addressMode(zero_page, arg, reg, memory) - (1 - reg->p.C);
+    reg->pc += 2;
+    cycle += 3;
+    break;
+
+  case 0xf5:
+    reg->a -= addressMode(zero_page_x, arg, reg, memory) - (1 - reg->p.C);
+    reg->pc += 2;
+    cycle += 4;
+    break;
+ 
+  case 0xed:
+    reg->a -= addressMode(absolute, arg, reg, memory) - (1 - reg->p.C);
+    reg->pc += 3;
+    cycle += 4;
+    break; 
+
+  case 0xfd:
+    reg->a -= addressMode(absolute_x, arg, reg, memory) - (1 - reg->p.C);
+    reg->pc += 3;
+    cycle += 4; // TODO: +1 if page crossed
+    break;
+
+  case 0xf9:
+    reg->a -= addressMode(absolute_y, arg, reg, memory) - (1 - reg->p.C);
+    reg->pc += 3;
+    cycle += 4; // TODO: +1 if page crossed
+    break;
+
+  case 0xe1:
+    reg->a -= addressMode(indirect_x, arg, reg, memory) - (1 - reg->p.C);
+    reg->pc += 2;
+    cycle += 6;
+    break;
+
+  case 0xf1:
+    reg->a -= addressMode(indirect_y, arg, reg, memory) - (1 - reg->p.C);
+    reg->pc += 2;
+    cycle += 6; // TODO: +1 if page crossed
+    break;
+
+  default:
+    return 0;
+  }
+
+  // TODO:
+  // C	Carry Flag	Clear if overflow in bit 7
+  reg->p.Z = reg->a == 0 ? 1 : 0;
+  reg->p.N = (reg->a & 0x80) >> 7;
+  // TODO: 
+  // overflow flag
+  // The overflow flag is set during arithmetic operations
+  // if the result has yielded an invalid 2's complement result
+  // (e.g. adding to positive numbers and ending up with a negative result: 64 + 64 => -128).
+  // It is determined by looking at the carry between bits 6 and 7 and between bit 7 and the carry flag.
+  return 1;
+}
+
 int set_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
 
   switch (op)
@@ -1726,6 +1795,16 @@ int brk_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
   return 0;
 }
 
+int nop_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
+  if (op == 0xea) {
+    VB2(printf("nop opcode"));
+    cycle += 2;
+    reg->pc += 1;
+    return 1;
+  }
+  return 0;
+}
+
 // global function
 void reset(t_registers *reg, t_mem *memory) {
   // https://www.pagetable.com/?p=410
@@ -1802,6 +1881,8 @@ int exec(t_mem *memory, t_registers *reg) {
   res += ror_opcode(reg, memory, op, addr);
   res += rts_opcode(reg, memory, op, addr);
   res += psp_opcode(reg, memory, op);
+  res += sbc_opcode(reg, memory, op, addr);
+  res += nop_opcode(reg, memory, op);
   assert(res < 2);
   if (res) {
     // found
