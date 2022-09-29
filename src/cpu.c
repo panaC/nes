@@ -522,48 +522,56 @@ int sbc_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   switch (op)
   {
   case 0xe9:
+    VB2(printf("sbc opcode immediate"));
     reg->a -= arg.lsb - (1 - reg->p.C);
     reg->pc += 2;
     cycle += 2;
     break;
 
   case 0xe5:
+    VB2(printf("sbc opcode zeropage"));
     reg->a -= addressMode(zero_page, arg, reg, memory) - (1 - reg->p.C);
     reg->pc += 2;
     cycle += 3;
     break;
 
   case 0xf5:
+    VB2(printf("sbc opcode zeropagex"));
     reg->a -= addressMode(zero_page_x, arg, reg, memory) - (1 - reg->p.C);
     reg->pc += 2;
     cycle += 4;
     break;
  
   case 0xed:
+    VB2(printf("sbc opcode absolute"));
     reg->a -= addressMode(absolute, arg, reg, memory) - (1 - reg->p.C);
     reg->pc += 3;
     cycle += 4;
     break; 
 
   case 0xfd:
+    VB2(printf("sbc opcode absolutex"));
     reg->a -= addressMode(absolute_x, arg, reg, memory) - (1 - reg->p.C);
     reg->pc += 3;
     cycle += 4; // TODO: +1 if page crossed
     break;
 
   case 0xf9:
+    VB2(printf("sbc opcode absolutey"));
     reg->a -= addressMode(absolute_y, arg, reg, memory) - (1 - reg->p.C);
     reg->pc += 3;
     cycle += 4; // TODO: +1 if page crossed
     break;
 
   case 0xe1:
+    VB2(printf("sbc opcode indirectx"));
     reg->a -= addressMode(indirect_x, arg, reg, memory) - (1 - reg->p.C);
     reg->pc += 2;
     cycle += 6;
     break;
 
   case 0xf1:
+    VB2(printf("sbc opcode indirecty"));
     reg->a -= addressMode(indirect_y, arg, reg, memory) - (1 - reg->p.C);
     reg->pc += 2;
     cycle += 6; // TODO: +1 if page crossed
