@@ -4,5 +4,5 @@
 
 void print_register(t_registers *reg) {
 
-  printf("pc=%x,sp=%x,p(C=%d,Z=%d,D=%d,I=%d,B=%d,V=%d,N=%d),a=%x,x=%x,y=%x", reg->pc, reg->sp, reg->p.C, reg->p.Z, reg->p.D, reg->p.I, reg->p.B, reg->p.V, reg->p.N, reg->a, reg->x, reg->y);
+  printf("pc=%02x,sp=%02x,p(C=%d,Z=%d,D=%d,I=%d,B=%d,V=%d,N=%d),a=%02x,x=%02x,y=%02x", reg->pc, reg->sp, reg->p.C, reg->p.Z, reg->p.D, reg->p.I, reg->p.B, reg->p.V, reg->p.N, reg->a & 0xff, reg->x & 0xff, reg->y & 0xff);
 }
