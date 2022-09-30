@@ -7,18 +7,16 @@
 #include "parser.h"
 #include "sdl.h"
 #include "snake.h"
+#include "bus.h"
 
 int global_verbose_level = 5;
 
 int main(int argc, char **argv) {
   printf("hello nes\n");
 
-  uint8_t* rawmem = (uint8_t*) malloc(MEM_SIZE);
-  bzero(rawmem, MEM_SIZE);
-  t_mem memory[MEM_SIZE];
-  for (int i = 0; i < MEM_SIZE; i++) {
-    memory[i] = rawmem + i;
-  }
+  bus_init_memory();
+  sdl_init();
+  sdl_createRenderer();
 
   // run(&memory[0], MEM_SIZE, 0, NULL);
   // run_test(&memory[0]);
@@ -28,9 +26,9 @@ int main(int argc, char **argv) {
   //  puts("no file to parse");
 
   // sdl_init();
-  snake(&memory[0]);
+  snake(&__memory[0]);
 
-  free(rawmem);
+  bus_quit();
   return 0;
 }
 

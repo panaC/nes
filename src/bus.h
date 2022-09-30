@@ -23,11 +23,14 @@ typedef uint8_t* t_mem;
 #define MEM_PTR(mem, x) (assert((int32_t)x < MEM_SIZE), mem[x])
 #define MEM_GET(mem, x) *MEM_PTR(mem, x)
 
-// declare to function read and write dans la mémoire
-// et une 3eme pour obtenir le ptr
 
+void bus_init_memory(void);
+void bus_quit(void);
 uint8_t readbus(t_mem *memory, uint32_t addr);
 union u16 readbus16(t_mem *memory, uint32_t addr);
 void writebus(t_mem *memory, uint32_t addr, uint8_t value);
+
+// extern global variable
+extern t_mem __memory[MEM_SIZE];
 
 #endif

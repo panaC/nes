@@ -2,6 +2,7 @@
 #include "snake.h"
 #include "stdint.h"
 #include "utils.h"
+#include "sdl.h"
 
 uint8_t rom[] = {
   0x20, 0x06, 0x06, 0x20, 0x38, 0x06, 0x20, 0x0d, 0x06, 0x20, 0x2a, 0x06, 0x60, 0xa9, 0x02, 0x85,
@@ -61,7 +62,14 @@ void snake(t_mem *memory) {
   int quit = 0;
   int debug = 0;
   int brk = 0x0724;
+  SDL_Event event;
   while (quit != -1) {
+    if (SDL_PollEvent(&event))
+    {
+      if (event.type == SDL_QUIT)
+        quit = -1;
+    }
+
     if (reg.pc == brk) debug = 1;
     if (debug) {
       int c = getchar();
@@ -70,9 +78,13 @@ void snake(t_mem *memory) {
         continue;
       } else if (c == 'r') {
         debug = 0;
+      } else if (c == 's') {
+        sdl_showRendering();
+        continue;
       }
       // lf 10
     }
+
     quit = exec(memory, &reg); 
   }
 
