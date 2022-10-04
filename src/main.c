@@ -29,6 +29,7 @@ int main(int argc, char **argv) {
   snake(&__memory[0]);
 
   bus_quit();
+  sdl_quit();
   return 0;
 }
 

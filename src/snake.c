@@ -3,6 +3,7 @@
 #include "stdint.h"
 #include "utils.h"
 #include "sdl.h"
+#include "debug.h"
 
 uint8_t rom[] = {
   0x20, 0x06, 0x06, 0x20, 0x38, 0x06, 0x20, 0x0d, 0x06, 0x20, 0x2a, 0x06, 0x60, 0xa9, 0x02, 0x85,
@@ -29,7 +30,44 @@ uint8_t rom[] = {
 
 #define START 0x600
 
-void snake(t_mem *memory) {
+static int quit = 0;
+
+static int CPUThread(void *data) {
+  t_registers reg = {
+      .pc = START,
+      .sp = 0,
+      .p = 0,
+      .a = 0,
+      .x = 0,
+      .y = 0};
+
+  int debug = 0;
+  int brk = 0x0724;
+  while (1) {
+    if (reg.pc == brk) debug = 1;
+    if (debug) {
+      int c = getchar();
+      if (c == 'p') {
+        hexdumpSnake(*(__memory + 0x200), 1024);
+        while(getchar() != '\n');
+        continue;
+      } else if (c == 'r') {
+        debug = 0;
+        while(getchar() != '\n');
+        continue;
+      } else if (c == 's') {
+        sdl_showRendering();
+        while(getchar() != '\n');
+        continue;
+      }
+      // lf 10
+    }
+
+    quit = exec(__memory, &reg);
+  }
+}
+
+void snake() {
 
   // memory map
   // 0x000 -> 0x0ff : variable
@@ -40,10 +78,10 @@ void snake(t_mem *memory) {
 
 
   for(int i = 0; i < sizeof(rom); i++) {
-    memory[START + i] = rom + i;
+    __memory[START + i] = rom + i;
   }
 
-  hexdump(*(memory + START), 320);
+  hexdump(*(__memory + START), 320);
 
 // 1/ launch SDL
 // 2/ launch CPU
@@ -51,43 +89,33 @@ void snake(t_mem *memory) {
 // 4/ display buffer 0x200 -> 0x5ff -> 32 * 32
 //        grid of 640 * 640 -> *20 -> pitch 20pixels
 
-  t_registers reg = {
-      .pc = START,
-      .sp = 0,
-      .p = 0,
-      .a = 0,
-      .x = 0,
-      .y = 0};
+
 
   int quit = 0;
-  int debug = 0;
-  int brk = 0x0724;
   SDL_Event event;
-  while (quit != -1) {
+  SDL_Thread *thread;
+
+  thread = SDL_CreateThread(CPUThread, "CPUThread", (void *)NULL);
+  if (!thread) {
+    printf("CPUThread ERROR");
+  }
+
+  while (quit != -1)
+  {
     if (SDL_PollEvent(&event))
     {
       if (event.type == SDL_QUIT)
+      {
+        if (thread)
+        {
+          SDL_DetachThread(thread);
+          thread = NULL;
+        }
         quit = -1;
-    }
-
-    if (reg.pc == brk) debug = 1;
-    if (debug) {
-      int c = getchar();
-      if (c == 'p') {
-        hexdumpSnake(*(memory + 0x200), 1024);
-        continue;
-      } else if (c == 'r') {
-        debug = 0;
-      } else if (c == 's') {
-        sdl_showRendering();
-        continue;
       }
-      // lf 10
     }
-
-    quit = exec(memory, &reg); 
   }
 
-  hexdumpSnake(*(memory + 0x200), 1024);
+  hexdumpSnake(*(__memory + 0x200), 1024);
 
 }

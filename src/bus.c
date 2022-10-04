@@ -19,7 +19,6 @@ void bus_init_memory() {
 }
 
 void bus_quit(void){
-  free(__memory);
 }
 
 static void bus_read_fe_rand(uint8_t *value, uint32_t addr) {
