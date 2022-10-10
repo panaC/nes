@@ -34,7 +34,7 @@ static void bus_write_2xx_screen(uint32_t addr, uint8_t value) {
     // fill a rect at address to the screen
 
     SDL_SetRenderDrawColor(__renderer, 0xff, 0xff, 0xff, 0xff); // white
-    SDL_Rect rect = {.x = (addr - 0x200) % 32, .y = (addr - 0x200) / 32, .w = 20, .h = 20};
+    SDL_Rect rect = {.x = ((addr - 0x200) % 32) * 20, .y = ((addr - 0x200) / 32) * 20, .w = 20, .h = 20};
     SDL_RenderFillRect(__renderer, &rect);
     VB3(printf("SDL: Fill one rect at addr=0x%x, x=%d, y=%d", addr, rect.x, rect.y));
   }

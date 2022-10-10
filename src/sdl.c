@@ -24,7 +24,7 @@ SDL_Window *sdl_init()
    *
    * 32 * 20 pixels pitch
    */
-  __win = SDL_CreateWindow("hello nes", 10, 10, 640, 640, SDL_WINDOW_RESIZABLE);
+  __win = SDL_CreateWindow("hello nes", 10, 10, 640, 640, 0);
   if (!__win)
   {
     fprintf(stderr, "Couldn't set 640x640x8 video mode: %s\n",
@@ -66,7 +66,7 @@ t_sdl_action sdl_processEvent() {
   case SDL_QUIT:
     return QUIT_EVENT;
     break;
-  
+
   default:
     return NO_EVENT;
   }

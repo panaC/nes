@@ -49,11 +49,9 @@ static int CPUThread(void *data) {
       int c = getchar();
       if (c == 'p') {
         hexdumpSnake(*(__memory + 0x200), 1024);
-        while(getchar() != '\n');
         continue;
       } else if (c == 'r') {
         debug = 0;
-        while(getchar() != '\n');
         continue;
       } else if (c == 's') {
         sdl_showRendering();
