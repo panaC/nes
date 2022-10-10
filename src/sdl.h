@@ -3,19 +3,25 @@
 
 #include <SDL2/SDL.h>
 
+#define HEIGHT 640
+#define WIDTH 640
+#define PITCH 20
+
 typedef enum {
   NO_EVENT = 0,
   QUIT_EVENT,
 } t_sdl_action;
 
-SDL_Window* sdl_init();
+void sdl_init();
 void sdl_quit();
-SDL_Renderer *sdl_createRenderer();
 void sdl_showRendering();
+void sdl_setPixelWithPitch(uint32_t pos, uint32_t color);
 t_sdl_action sdl_processEvent();
 
 // extern global variable
 extern SDL_Window *__win;
 extern SDL_Renderer *__renderer;
+extern SDL_Texture *__texture;
+extern uint32_t __rawPixel[WIDTH * HEIGHT];
 
 #endif

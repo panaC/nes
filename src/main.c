@@ -16,7 +16,6 @@ int main(int argc, char **argv) {
 
   bus_init_memory();
   sdl_init();
-  sdl_createRenderer();
 
   // run(&memory[0], MEM_SIZE, 0, NULL);
   // run_test(&memory[0]);

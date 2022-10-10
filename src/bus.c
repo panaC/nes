@@ -32,11 +32,8 @@ static void bus_read_fe_rand(uint8_t *value, uint32_t addr) {
 static void bus_write_2xx_screen(uint32_t addr, uint8_t value) {
   if (addr >= 0x200 && addr < 0x600) {
     // fill a rect at address to the screen
-
-    SDL_SetRenderDrawColor(__renderer, 0xff, 0xff, 0xff, 0xff); // white
-    SDL_Rect rect = {.x = ((addr - 0x200) % 32) * 20, .y = ((addr - 0x200) / 32) * 20, .w = 20, .h = 20};
-    SDL_RenderFillRect(__renderer, &rect);
-    VB3(printf("SDL: Fill one rect at addr=0x%x, x=%d, y=%d", addr, rect.x, rect.y));
+    sdl_setPixelWithPitch(addr - 0x200, 0xffffffff);
+    VB3(printf("SDL: SET PIXEL X=%d Y=%d", (addr-0x200) % 32, (addr-0x200) / 32));
   }
 }
 

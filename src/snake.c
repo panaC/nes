@@ -53,10 +53,6 @@ static int CPUThread(void *data) {
       } else if (c == 'r') {
         debug = 0;
         continue;
-      } else if (c == 's') {
-        sdl_showRendering();
-        while(getchar() != '\n');
-        continue;
       }
       // lf 10
     }
@@ -115,6 +111,9 @@ void snake() {
     default:
       break;
     }
+
+    SDL_Delay(1000 / 60); // 60fps
+    sdl_showRendering();
   }
 
   hexdumpSnake(*(__memory + 0x200), 1024);
