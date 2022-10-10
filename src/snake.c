@@ -92,7 +92,6 @@ void snake() {
 
 
   int quit = 0;
-  SDL_Event event;
   SDL_Thread *thread;
 
   thread = SDL_CreateThread(CPUThread, "CPUThread", (void *)NULL);
@@ -102,17 +101,21 @@ void snake() {
 
   while (quit != -1)
   {
-    if (SDL_PollEvent(&event))
+
+    switch (sdl_processEvent())
     {
-      if (event.type == SDL_QUIT)
+    case QUIT_EVENT:
+      if (thread)
       {
-        if (thread)
-        {
-          SDL_DetachThread(thread);
-          thread = NULL;
-        }
-        quit = -1;
+        SDL_DetachThread(thread);
+        thread = NULL;
       }
+      quit = -1;
+
+      break;
+
+    default:
+      break;
     }
   }
 

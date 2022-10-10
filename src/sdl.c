@@ -56,21 +56,21 @@ void sdl_showRendering() {
   SDL_RenderPresent(__renderer);
 }
 
-/*
-
-  int isquit = 0;
+t_sdl_action sdl_processEvent() {
   SDL_Event event;
-  while (!isquit)
+  t_sdl_action ret;
+
+  SDL_PollEvent(&event);
+  switch (event.type)
   {
-    if (SDL_PollEvent(&event))
-    {
-      if (event.type == SDL_QUIT)
-      {
-        isquit = 1;
-      }
-    }
+  case SDL_QUIT:
+    return QUIT_EVENT;
+    break;
+  
+  default:
+    return NO_EVENT;
   }
-*/
+}
 
 void sdl_quit()
 {
