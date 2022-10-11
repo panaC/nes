@@ -9,8 +9,6 @@
 #include "snake.h"
 #include "bus.h"
 
-int global_verbose_level = 5;
-
 int main(int argc, char **argv) {
   printf("hello nes\n");
 

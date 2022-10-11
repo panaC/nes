@@ -5,12 +5,15 @@
 #include <errno.h>  
 #include <sys/mman.h>
 #include "parser.h"
+#include "log.h"
+
+#define debug(...) log_x(LOG_PARSER, __VA_ARGS__)
 
 void parse(char* filepath) {
 
   int fd = open(filepath, O_RDONLY);
   if (fd < 0) {
-    VB0(printf("Error to open %s error=%s", filepath, strerror(errno)));
+    debug("Error to open %s error=%s", filepath, strerror(errno));
     return ;
   }
 
@@ -21,7 +24,7 @@ void parse(char* filepath) {
   if (ptr == NULL) {
     return ;
   }
-  VB4(printf("ines file size %lld", st.st_size));
+  debug("ines file size %lld", st.st_size);
   if (st.st_size < 16 || !(st.st_size > 16 && !strncmp((char*)ptr, "NES\x1a", 4))) {
     fprintf(stderr, "Not an INES format\n");
     return ;
@@ -29,46 +32,46 @@ void parse(char* filepath) {
 
   struct s_ines *ines = (struct s_ines*) ptr;
 
-  VB0(printf("pgrrom size %d", ines->size_pgrrom));
-  VB0(printf("chrrom size %d", ines->size_chrrom));
-  VB0(printf("prgrram size %d", ines->size_pgrram));
+  debug("pgrrom size %d", ines->size_pgrrom);
+  debug("chrrom size %d", ines->size_chrrom);
+  debug("prgrram size %d", ines->size_pgrram);
 
   if (ines->flag6.mirroring) {
-    VB0(printf("mirroring vertical (horizontal arrangement) (CIRAM A10 = PPU A10)"));
+    debug("mirroring vertical (horizontal arrangement) (CIRAM A10 = PPU A10)");
   } else {
-    VB0(printf("mirroring horizontal (vertical arrangement) (CIRAM A10 = PPU A11)"));
+    debug("mirroring horizontal (vertical arrangement) (CIRAM A10 = PPU A11)");
   }
 
   if (ines->flag6.isBatteryPacked) {
-    VB0(printf("battery Packed"));
+    debug("battery Packed");
   }
 
   if (ines->flag6.isTrainer) {
-    VB0(printf("is Trainer"));
+    debug("is Trainer");
   }
   
   if (ines->flag6.ignoreMirroring) {
-    VB0(printf("Ignore mirroring control or above mirroring bit; instead provide four-screen VRAM"));
+    debug("Ignore mirroring control or above mirroring bit; instead provide four-screen VRAM");
   }
 
   if (ines->flag7.isVSUnisystem) {
-    VB0(printf("isVSUnisystem"));
+    debug("isVSUnisystem");
   }
 
   if (ines->flag7.isPlayChoice10) {
-    VB0(printf("isPlayChoice10"));
+    debug("isPlayChoice10");
   }
 
   if (ines->flag7.isNes2Format) {
-    VB0(printf("nes2.0"));
+    debug("nes2.0");
   }
 
-  VB0(printf("mapper=%x", ines->flag6.lowerNibbleMapperNumber && (ines->flag7.upperNibbleMapperNumber << 4)));
+  debug("mapper=%x", ines->flag6.lowerNibbleMapperNumber && (ines->flag7.upperNibbleMapperNumber << 4));
 
   if (ines->tvsystem) {
-    VB0(printf("TV PAL"));
+    debug("TV PAL");
   } else {
-    VB0(printf("TV NTSC"));
+    debug("TV NTSC");
   }
 
 

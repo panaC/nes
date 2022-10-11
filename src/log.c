@@ -52,7 +52,7 @@ static struct
        .callbacks = {NULL}};
 
 static const char *level_strings[] = {
-    "ERROR", "DEBUG", "BUS", "SDL"};
+    "ERROR", "DEBUG", "BUS", "SDL", "CPU", "PARSER"};
 
 #ifdef LOG_USE_COLOR
 static const char *level_colors[] = {

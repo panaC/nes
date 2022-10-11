@@ -34,6 +34,8 @@ enum
   LOG_DEBUG = 0x01,
   LOG_BUS = 0x02,
   LOG_SDL = 0x04,
+  LOG_CPU = 0x08,
+  LOG_PARSER = 0x0f,
 };
 
 #define log_x(x, ...) log_log(x, __FILE__, __LINE__, __VA_ARGS__)
