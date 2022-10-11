@@ -2,6 +2,7 @@
 #define SDL_H
 
 #include <SDL2/SDL.h>
+#include "log.h"
 
 #define HEIGHT 640
 #define WIDTH 640

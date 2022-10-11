@@ -3,6 +3,8 @@
 #include <assert.h>
 #include "sdl.h"
 
+#define debug(...) log_x(LOG_SDL, __VA_ARGS__)
+
 // global variable
 SDL_Window *__win = NULL;
 SDL_Renderer *__renderer = NULL;
@@ -79,10 +81,12 @@ t_sdl_action sdl_processEvent() {
   switch (event.type)
   {
   case SDL_QUIT:
+    debug("QUIT EVENT");
     return QUIT_EVENT;
     break;
 
   default:
+    // debug("UNKNOWN EVENT %d", event.type);
     return NO_EVENT;
   }
 }
