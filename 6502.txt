@@ -102,3 +102,6 @@ https://nerdy-nights.nes.science/
 === test 6502 with a snake game ===
 http://skilldrick.github.io/easy6502/#snake
 
+=== Carry and Overflow flags explanations ===
+http://www.6502.org/tutorials/vflag.html
+

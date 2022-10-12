@@ -42,21 +42,6 @@ void init(t_registers *reg, t_mem *memory) {
   bzero(memory[0x4010], 4);
 }
 
-void check_processor_status(int32_t lastValue, int8_t value, t_registers *reg)
-{
-
-  // TODO : https://www.doc.ic.ac.uk/~eedwards/compsys/arithmetic/index.html#:~:text=Overflow%20Rule%20for%20addition,result%20has%20the%20opposite%20sign.
-  // carry should be checked with the sign of the bit 7 and not from a cast to 32bit variable
-  reg->p.C = (lastValue > 127 || lastValue < -128) ? 1 : 0; // carry
-  reg->p.Z = value == 0 ? 1 : 0; // zero
-  reg->p.N = value < 0 ? 1 : 0; // neg
-  reg->p.V = lastValue > value ? 1 : 0; // overflow
-
-  // TODO:
-  // Refactor 
-  // see sbc_opcode
-}
-
 uint32_t getAddressMode(t_e_mode mode, union u16 arg, t_registers *reg, t_mem *memory) {
 
   // debug("addressMode arg(LSB=%x,MSB=%x,v=%x)", arg.lsb, arg.msb, arg.value);
@@ -92,6 +77,26 @@ uint8_t addressMode(t_e_mode mode, union u16 arg, t_registers *reg, t_mem *memor
 
 void debug_opcode(char* str, t_e_mode mode, uint8_t op, union u16 arg) {
 
+/**
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ *
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ *  COMMENT LOG
+ * */
   switch (mode)
   {
   case accumulator:
@@ -150,15 +155,14 @@ void debug_opcode(char* str, t_e_mode mode, uint8_t op, union u16 arg) {
 }
 
 int adc_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
-  int16_t lastValue;
+  int16_t result;
   char *str = "ADC";
 
   switch (op)
   {
   case 0x69: // immediate
     debug_opcode(str, immediate, op, arg);
-    lastValue = reg->a + arg.lsb + reg->p.C;
-    reg->a = (int8_t)lastValue;
+    result = reg->a + arg.lsb + reg->p.C;
 
     reg->pc += 2;
     cycle += 2;
@@ -166,8 +170,7 @@ int adc_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     break;
   case 0x65:
     debug_opcode(str, zero_page, op, arg);
-    lastValue = reg->a + addressMode(zero_page, arg, reg, memory) + reg->p.C;
-    reg->a = (int8_t)lastValue;
+    result = reg->a + addressMode(zero_page, arg, reg, memory) + reg->p.C;
 
     reg->pc += 2;
     cycle += 3;
@@ -175,8 +178,7 @@ int adc_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     break;
   case 0x75: 
     debug_opcode(str, zero_page_x, op, arg);
-    lastValue = reg->a + addressMode(zero_page_x, arg, reg, memory) + reg->p.C;
-    reg->a = (int8_t)lastValue;
+    result = reg->a + addressMode(zero_page_x, arg, reg, memory) + reg->p.C;
 
     reg->pc += 2;
     cycle += 4;
@@ -184,8 +186,7 @@ int adc_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     break;
   case 0x6d: 
     debug_opcode(str, absolute, op, arg);
-    lastValue = reg->a + addressMode(absolute, arg, reg, memory) + reg->p.C;
-    reg->a = (int8_t)lastValue;
+    result = reg->a + addressMode(absolute, arg, reg, memory) + reg->p.C;
 
     reg->pc += 3;
     cycle += 4;
@@ -193,8 +194,7 @@ int adc_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     break;
   case 0x7d: 
     debug_opcode(str, absolute_x, op, arg);
-    lastValue = reg->a + addressMode(absolute_x, arg, reg, memory) + reg->p.C;
-    reg->a = (int8_t)lastValue;
+    result = reg->a + addressMode(absolute_x, arg, reg, memory) + reg->p.C;
 
     reg->pc += 3;
     if ((arg.value & 0x00ff) + reg->x > 0xff)
@@ -215,8 +215,7 @@ int adc_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   
   case 0x79: 
     debug_opcode(str, absolute_y, op, arg);
-    lastValue = reg->a + addressMode(absolute_y, arg, reg, memory) + reg->p.C;
-    reg->a = (int8_t)lastValue;
+    result = reg->a + addressMode(absolute_y, arg, reg, memory) + reg->p.C;
 
     reg->pc += 3;
     if ((arg.value & 0x00ff) + reg->x > 0xff)
@@ -228,8 +227,7 @@ int adc_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
 
    case 0x61: 
     debug_opcode(str, indirect_x, op, arg);
-    lastValue = reg->a + addressMode(indirect_x, arg, reg, memory) + reg->p.C;
-    reg->a = (int8_t)lastValue;
+    result = reg->a + addressMode(indirect_x, arg, reg, memory) + reg->p.C;
 
     reg->pc += 2;
     cycle += 6;
@@ -237,8 +235,7 @@ int adc_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     break; 
    case 0x71: 
     debug_opcode(str, indirect_y, op, arg);
-    lastValue = reg->a + addressMode(indirect_y, arg, reg, memory) + reg->p.C;
-    reg->a = (int8_t)lastValue;
+    result = reg->a + addressMode(indirect_y, arg, reg, memory) + reg->p.C;
 
     // how to do a page crossing detection on indirect_y
     // val = PEEK(PEEK(arg) + PEEK((arg + 1) % 256) * 256 + Y)
@@ -258,7 +255,23 @@ int adc_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
       return 0;
 
   }
-  check_processor_status(lastValue, reg->a, reg);
+
+  reg->a = result;
+
+  reg->p.Z = !result;
+  reg->p.N = (result & 0x80) >> 7; 
+
+  // http://www.6502.org/tutorials/vflag.html
+  reg->p.C = (result & 0x100) >> 8;
+  // As stated above, the second purpose of the carry flag
+  // is to indicate when the result of the
+  // addition or subtraction is outside the range 0 to 255, specifically:
+    // When the addition result is 0 to 255, the carry is cleared.
+    // When the addition result is greater than 255, the carry is set.
+  
+  // http://www.6502.org/tutorials/vflag.html
+  reg->p.V = result >= 0 ? (result & 0x100) >> 8 : !((result & 0x80) >> 7);
+  
   return 1;
 }
 
@@ -333,74 +346,70 @@ int and_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   default:
     return 0;
   }
+  reg->p.Z = !!reg->a;
+  reg->p.N = reg->a >> 7; 
 
-  check_processor_status(reg->a, reg->a, reg);
   return 1;
 }
 
 int asl_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   char *str = "ASL";
 
-  int32_t last_value;
+  uint16_t result;
   switch (op)
   {
   case 0x0a:
     debug_opcode(str, accumulator, op, arg);;
-    last_value = reg->a << 1;
+    result = reg->a << 1;
     reg->a <<= 1;
 
     cycle += 2;
     reg->pc += 1;
-    check_processor_status(last_value, reg->a, reg);
     break;
   
   case 0x06:
     debug_opcode(str, zero_page, op, arg);;
-    last_value = readbus(memory, getAddressMode(zero_page, arg, reg, memory)) << 1;
-    writebus(memory, getAddressMode(zero_page, arg, reg, memory), last_value);
+    result = readbus(memory, getAddressMode(zero_page, arg, reg, memory)) << 1;
+    writebus(memory, getAddressMode(zero_page, arg, reg, memory), result);
 
     cycle += 5;
     reg->pc += 2;
-    // TODO
-    check_processor_status(last_value, *memory[arg.lsb], reg);
     break;
 
   case 0x16:
     debug_opcode(str, zero_page_x, op, arg);;
-    last_value = readbus(memory, getAddressMode(zero_page_x, arg, reg, memory)) << 1;
-    writebus(memory, getAddressMode(zero_page_x, arg, reg, memory), last_value);
+    result = readbus(memory, getAddressMode(zero_page_x, arg, reg, memory)) << 1;
+    writebus(memory, getAddressMode(zero_page_x, arg, reg, memory), result);
 
     cycle += 6;
     reg->pc += 2;
-    // TODO
-    check_processor_status(last_value, *memory[arg.lsb + reg->x], reg);
     break;
 
   case 0x0e:
     debug_opcode(str, absolute, op, arg);;
-    last_value = readbus(memory, getAddressMode(absolute, arg, reg, memory)) << 1;
-    writebus(memory, getAddressMode(absolute, arg, reg, memory), last_value);
+    result = readbus(memory, getAddressMode(absolute, arg, reg, memory)) << 1;
+    writebus(memory, getAddressMode(absolute, arg, reg, memory), result);
 
     cycle += 6;
     reg->pc += 3;
-    // TODO
-    check_processor_status(last_value, *memory[arg.value], reg);
     break;
 
   case 0x1e:
     debug_opcode(str, absolute_x, op, arg);;
-    last_value = readbus(memory, getAddressMode(absolute_x, arg, reg, memory)) << 1;
-    writebus(memory, getAddressMode(absolute_x, arg, reg, memory), last_value);
+    result = readbus(memory, getAddressMode(absolute_x, arg, reg, memory)) << 1;
+    writebus(memory, getAddressMode(absolute_x, arg, reg, memory), result);
 
     cycle += 7;
     reg->pc += 3;
-    // TODO
-    check_processor_status(last_value, *memory[arg.value + reg->x], reg);
     break;
 
   default:
     return 0;
   }
+
+  reg->p.Z = !result;
+  reg->p.N = (result & 0x80) >> 7;
+  reg->p.C = (result & 0x100) >> 8; // Set to contents of old bit 7
 
   return 1;
 }
@@ -475,9 +484,9 @@ int bit_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   default:
     return 0;
   }
-  reg->p.Z = (value == 0) ? 1 : 0;
-  reg->p.V = (value & 0b100000) ? 1 : 0;
-  reg->p.N = (value & 0b1000000) ? 1 : 0;
+  reg->p.Z = !value;
+  reg->p.V = (value & 0x40) >> 6;
+  reg->p.N = (value & 0x80) >> 7;
 
   return 1;
 }
@@ -597,60 +606,61 @@ int clr_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
 int sbc_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   char *str = "SBC";
 
+  int16_t result;
   switch (op)
   {
   case 0xe9:
     debug_opcode(str, immediate, op, arg);;
-    reg->a -= arg.lsb - (1 - reg->p.C);
+    result = reg->a - arg.lsb - (1 - reg->p.C);
     reg->pc += 2;
     cycle += 2;
     break;
 
   case 0xe5:
     debug_opcode(str, zero_page, op, arg);;
-    reg->a -= addressMode(zero_page, arg, reg, memory) - (1 - reg->p.C);
+    result = reg->a - addressMode(zero_page, arg, reg, memory) - (1 - reg->p.C);
     reg->pc += 2;
     cycle += 3;
     break;
 
   case 0xf5:
     debug_opcode(str, zero_page_x, op, arg);;
-    reg->a -= addressMode(zero_page_x, arg, reg, memory) - (1 - reg->p.C);
+    result = reg->a - addressMode(zero_page_x, arg, reg, memory) - (1 - reg->p.C);
     reg->pc += 2;
     cycle += 4;
     break;
  
   case 0xed:
     debug_opcode(str, absolute, op, arg);;
-    reg->a -= addressMode(absolute, arg, reg, memory) - (1 - reg->p.C);
+    result = reg->a - addressMode(absolute, arg, reg, memory) - (1 - reg->p.C);
     reg->pc += 3;
     cycle += 4;
     break; 
 
   case 0xfd:
     debug_opcode(str, absolute_x, op, arg);;
-    reg->a -= addressMode(absolute_x, arg, reg, memory) - (1 - reg->p.C);
+    result = reg->a - addressMode(absolute_x, arg, reg, memory) - (1 - reg->p.C);
     reg->pc += 3;
     cycle += 4; // TODO: +1 if page crossed
     break;
 
   case 0xf9:
     debug_opcode(str, absolute_y, op, arg);;
-    reg->a -= addressMode(absolute_y, arg, reg, memory) - (1 - reg->p.C);
+    result = reg->a - addressMode(absolute_y, arg, reg, memory) - (1 - reg->p.C);
     reg->pc += 3;
     cycle += 4; // TODO: +1 if page crossed
     break;
 
   case 0xe1:
     debug_opcode(str, indirect_x, op, arg);;
-    reg->a -= addressMode(indirect_x, arg, reg, memory) - (1 - reg->p.C);
+    result = reg->a - addressMode(indirect_x, arg, reg, memory) - (1 - reg->p.C);
     reg->pc += 2;
     cycle += 6;
     break;
 
   case 0xf1:
     debug_opcode(str, indirect_y, op, arg);;
-    reg->a -= addressMode(indirect_y, arg, reg, memory) - (1 - reg->p.C);
+    result = reg->a - addressMode(indirect_y, arg, reg, memory) - (1 - reg->p.C);
     reg->pc += 2;
     cycle += 6; // TODO: +1 if page crossed
     break;
@@ -659,16 +669,22 @@ int sbc_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     return 0;
   }
 
-  // TODO:
-  // C	Carry Flag	Clear if overflow in bit 7
-  reg->p.Z = reg->a == 0 ? 1 : 0;
-  reg->p.N = (reg->a & 0x80) >> 7;
-  // TODO: 
-  // overflow flag
-  // The overflow flag is set during arithmetic operations
-  // if the result has yielded an invalid 2's complement result
-  // (e.g. adding to positive numbers and ending up with a negative result: 64 + 64 => -128).
-  // It is determined by looking at the carry between bits 6 and 7 and between bit 7 and the carry flag.
+  reg->a = result;
+
+  reg->p.Z = !result;
+  reg->p.N = (result & 0x80) >> 7; 
+
+  // http://www.6502.org/tutorials/vflag.html
+  reg->p.C = !((result & 0x80) >> 7);
+  // As stated above, the second purpose of the carry flag
+  // is to indicate when the result of the
+  // addition or subtraction is outside the range 0 to 255, specifically:
+    // When the subtraction result is 0 to 255, the carry is set.
+    // When the subtraction result is less than 0, the carry is cleared.
+
+  // http://www.6502.org/tutorials/vflag.html
+  reg->p.V = result >= 0 ? (result & 0x100) >> 8 : !((result & 0x80) >> 7);
+
   return 1;
 }
 
@@ -705,48 +721,54 @@ int set_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
 
 int trs_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
 
+  int8_t result;
   switch (op)
   {
   case 0xaa:
     debug_opcode("TAX", implied, op, (union u16){.value = 0});;
     // tax
     reg->x = reg->a;
-    check_processor_status(reg->x, reg->x, reg);
+    reg->p.Z = !reg->x;
+    reg->p.N = (reg->x & 0x80) >> 7; 
     break;
   
   case 0xa8:
     debug_opcode("TAY", implied, op, (union u16){.value = 0});;
     // tay
     reg->y = reg->a;
-    check_processor_status(reg->y, reg->y, reg);
+    reg->p.Z = !reg->y;
+    reg->p.N = (reg->y & 0x80) >> 7; 
     break;
 
   case 0xba:
     debug_opcode("TSX", implied, op, (union u16){.value = 0});;
     // tsx
     reg->x = reg->sp;
-    check_processor_status(reg->x, reg->x, reg);
+    reg->p.Z = !reg->x;
+    reg->p.N = (reg->x & 0x80) >> 7; 
     break;
 
   case 0x8a:
     debug_opcode("TXA", implied, op, (union u16){.value = 0});;
     // txa
     reg->a = reg->x;
-    check_processor_status(reg->a, reg->a, reg);
+    reg->p.Z = !reg->a;
+    reg->p.N = (reg->a & 0x80) >> 7;
     break;
   
   case 0x9a:
     debug_opcode("TXS", implied, op, (union u16){.value = 0});;
     // txs
-    reg->a = reg->sp;
-    // no check status
+    reg->sp = reg->x;
+    // no check processor status
     break;
   
   case 0x98:
     debug_opcode("TYA", implied, op, (union u16){.value = 0});;
     // tya
     reg->a = reg->y;
-    check_processor_status(reg->a, reg->a, reg);
+    reg->p.Z = !reg->a;
+    reg->p.N = (reg->a & 0x80) >> 7; 
     break;
 
   default:
@@ -761,12 +783,12 @@ int trs_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
 int cmp_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   char *str = "CMP";
 
-  int32_t last_value;
+  int8_t mem;
   switch (op)
   {
   case 0xc9:
     debug_opcode(str, immediate, op, arg);;
-    last_value = reg->a - arg.lsb;
+    mem = arg.lsb;
 
     reg->pc += 2;
     cycle += 2;
@@ -774,7 +796,7 @@ int cmp_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   
   case 0xc5:
     debug_opcode(str, zero_page, op, arg);;
-    last_value = reg->a - addressMode(zero_page, arg, reg, memory);
+    mem = addressMode(zero_page, arg, reg, memory);
 
     reg->pc += 2;
     cycle += 3;
@@ -782,7 +804,7 @@ int cmp_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   
   case 0xd5:
     debug_opcode(str, zero_page_x, op, arg);;
-    last_value = reg->a - addressMode(zero_page_x, arg, reg, memory);
+    mem = addressMode(zero_page_x, arg, reg, memory);
 
     reg->pc += 2;
     cycle += 4;
@@ -790,7 +812,7 @@ int cmp_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
 
   case 0xcd:
     debug_opcode(str, absolute, op, arg);;
-    last_value = reg->a - addressMode(absolute, arg, reg, memory);
+    mem = addressMode(absolute, arg, reg, memory);
 
     reg->pc += 3;
     cycle += 4;
@@ -798,7 +820,7 @@ int cmp_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
 
   case 0xdd:
     debug_opcode(str, absolute_x, op, arg);;
-    last_value = reg->a - addressMode(absolute_x, arg, reg, memory);
+    mem = addressMode(absolute_x, arg, reg, memory);
 
     reg->pc += 3;
     cycle += 4; // TODO +1 if page crossed
@@ -806,7 +828,7 @@ int cmp_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
 
   case 0xd9:
     debug_opcode(str, absolute_y, op, arg);;
-    last_value = reg->a - addressMode(absolute_y, arg, reg, memory);
+    mem = addressMode(absolute_y, arg, reg, memory);
 
     reg->pc += 3;
     cycle += 4; // TODO +1 if page crossed
@@ -814,7 +836,7 @@ int cmp_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   
   case 0xc1:
     debug_opcode(str, indirect_x, op, arg);;
-    last_value = reg->a - addressMode(indirect_x, arg, reg, memory);
+    mem = addressMode(indirect_x, arg, reg, memory);
 
     reg->pc += 2;
     cycle += 6;
@@ -822,7 +844,7 @@ int cmp_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
 
   case 0xd1:
     debug_opcode(str, indirect_y, op, arg);;
-    last_value = reg->a - addressMode(indirect_y, arg, reg, memory);
+    mem = addressMode(indirect_y, arg, reg, memory);
 
     reg->pc += 2;
     cycle += 5; // TODO +1 if page crossed
@@ -832,10 +854,10 @@ int cmp_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     return 0;
   }
 
-  reg->p.Z = last_value == 0 ? 1 : 0;
-  reg->p.C = last_value > 0 ? 1 : 0;
-  reg->p.N = last_value < 0 ? 1 : 0;
-  
+  reg->p.Z = reg->a == mem ? 1 : 0;
+  reg->p.N = reg->a < mem ? 1 : 0;
+  reg->p.C = reg->a >= mem ? 1 : 0;
+
   return 1;
 }
 
@@ -843,11 +865,12 @@ int cpx_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   char *str = "CPX";
 
   int32_t last_value;
+  int8_t mem;
   switch (op)
   {
   case 0xe0:
     debug_opcode(str, immediate, op, arg);;
-    last_value = reg->x - arg.lsb;
+    mem = arg.lsb;
 
     reg->pc += 2;
     cycle += 2;
@@ -855,7 +878,7 @@ int cpx_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   
   case 0xe4:
     debug_opcode(str, zero_page, op, arg);;
-    last_value = reg->x - addressMode(zero_page, arg, reg, memory);
+    mem = addressMode(zero_page, arg, reg, memory);
 
     reg->pc += 2;
     cycle += 3;
@@ -863,7 +886,7 @@ int cpx_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   
   case 0xec:
     debug_opcode(str, absolute, op, arg);;
-    last_value = reg->x - addressMode(absolute, arg, reg, memory);
+    mem = addressMode(absolute, arg, reg, memory);
 
     reg->pc += 3;
     cycle += 4;
@@ -873,9 +896,9 @@ int cpx_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     return 0;
   }
 
-  reg->p.Z = last_value == 0 ? 1 : 0;
-  reg->p.C = last_value > 0 ? 1 : 0;
-  reg->p.N = last_value < 0 ? 1 : 0;
+  reg->p.Z = reg->x == mem ? 1 : 0;
+  reg->p.N = reg->x < mem ? 1 : 0;
+  reg->p.C = reg->x >= mem ? 1 : 0;
 
   return 1;
 }
@@ -883,12 +906,12 @@ int cpx_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
 int cpy_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   char *str = "CPY";
 
-  int32_t last_value;
+  int8_t mem;
   switch (op)
   {
   case 0xc0:
     debug_opcode(str, immediate, op, arg);;
-    last_value = reg->y - arg.lsb;
+    mem = arg.lsb;
 
     reg->pc += 2;
     cycle += 2;
@@ -896,7 +919,7 @@ int cpy_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   
   case 0xc4:
     debug_opcode(str, zero_page, op, arg);;
-    last_value = reg->y - addressMode(zero_page, arg, reg, memory);
+    mem = addressMode(zero_page, arg, reg, memory);
 
     reg->pc += 2;
     cycle += 3;
@@ -904,7 +927,7 @@ int cpy_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   
   case 0xcc:
     debug_opcode(str, absolute, op, arg);;
-    last_value = reg->y - addressMode(absolute, arg, reg, memory);
+    mem = addressMode(absolute, arg, reg, memory);
 
     reg->pc += 3;
     cycle += 4;
@@ -914,9 +937,11 @@ int cpy_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     return 0;
   }
 
-  reg->p.Z = last_value == 0 ? 1 : 0;
-  reg->p.C = last_value > 0 ? 1 : 0;
-  reg->p.N = last_value < 0 ? 1 : 0;
+  reg->p.Z = reg->y == mem ? 1 : 0;
+  reg->p.N = reg->y < mem ? 1 : 0;
+  reg->p.C = reg->y >= mem ? 1 : 0;
+
+
   
   return 1;
 }
@@ -924,13 +949,13 @@ int cpy_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
 int dec_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   char *str = "DEC";
 
-  int32_t last_value;
+  int8_t result;
   switch (op)
   {
   case 0xc6:
     debug_opcode(str, zero_page, op, arg);;
-    last_value = readbus(memory, getAddressMode(zero_page, arg, reg, memory)) - 1;
-    writebus(memory, getAddressMode(zero_page, arg, reg, memory), last_value);
+    result = (int8_t)readbus(memory, getAddressMode(zero_page, arg, reg, memory)) - 1;
+    writebus(memory, getAddressMode(zero_page, arg, reg, memory), result);
 
     reg->pc += 2;
     cycle += 5;
@@ -938,24 +963,24 @@ int dec_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   
   case 0xd6:
     debug_opcode(str, zero_page_x, op, arg);;
-    last_value = readbus(memory, getAddressMode(zero_page_x, arg, reg, memory)) - 1;
-    writebus(memory, getAddressMode(zero_page_x, arg, reg, memory), last_value);
+    result = (int8_t)readbus(memory, getAddressMode(zero_page_x, arg, reg, memory)) - 1;
+    writebus(memory, getAddressMode(zero_page_x, arg, reg, memory), result);
 
     reg->pc += 2;
     cycle += 6;
 
   case 0xce:
     debug_opcode(str, absolute, op, arg);;
-    last_value = readbus(memory, getAddressMode(absolute, arg, reg, memory)) - 1;
-    writebus(memory, getAddressMode(absolute, arg, reg, memory), last_value);
+    result = (int8_t)readbus(memory, getAddressMode(absolute, arg, reg, memory)) - 1;
+    writebus(memory, getAddressMode(absolute, arg, reg, memory), result);
 
     reg->pc += 3;
     cycle += 6;
   
   case 0xde:
     debug_opcode(str, absolute_x, op, arg);;
-    last_value = readbus(memory, getAddressMode(absolute_x, arg, reg, memory)) - 1;
-    writebus(memory, getAddressMode(absolute_x, arg, reg, memory), last_value);
+    result = (int8_t)readbus(memory, getAddressMode(absolute_x, arg, reg, memory)) - 1;
+    writebus(memory, getAddressMode(absolute_x, arg, reg, memory), result);
 
     reg->pc += 3;
     cycle += 7;
@@ -965,8 +990,8 @@ int dec_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     return 0;
   }
 
-  reg->p.Z = last_value == 0 ? 1 : 0;
-  reg->p.N = last_value < 0 ? 1 : 0;
+  reg->p.Z = result == 0 ? 1 : 0;
+  reg->p.N = result < 0 ? 1 : 0;
 
   return 1;
 }
@@ -974,13 +999,13 @@ int dec_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
 int inc_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   char *str = "INC";
 
-  int32_t last_value;
+  int8_t result;
   switch (op)
   {
   case 0xe6:
     debug_opcode(str, zero_page, op, arg);
-    last_value = readbus(memory, getAddressMode(zero_page, arg, reg, memory)) + 1;
-    writebus(memory, getAddressMode(zero_page, arg, reg, memory), last_value);
+    result = (int8_t)readbus(memory, getAddressMode(zero_page, arg, reg, memory)) + 1;
+    writebus(memory, getAddressMode(zero_page, arg, reg, memory), result);
 
     reg->pc += 2;
     cycle += 5;
@@ -988,24 +1013,24 @@ int inc_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   
   case 0xf6:
     debug_opcode(str, zero_page_x, op, arg);;
-    last_value = readbus(memory, getAddressMode(zero_page_x, arg, reg, memory)) + 1;
-    writebus(memory, getAddressMode(zero_page_x, arg, reg, memory), last_value);
+    result = (int8_t)readbus(memory, getAddressMode(zero_page_x, arg, reg, memory)) + 1;
+    writebus(memory, getAddressMode(zero_page_x, arg, reg, memory), result);
 
     reg->pc += 2;
     cycle += 6;
 
   case 0xee:
     debug_opcode(str, absolute, op, arg);;
-    last_value = readbus(memory, getAddressMode(absolute, arg, reg, memory)) + 1;
-    writebus(memory, getAddressMode(absolute, arg, reg, memory), last_value);
+    result = (int8_t)readbus(memory, getAddressMode(absolute, arg, reg, memory)) + 1;
+    writebus(memory, getAddressMode(absolute, arg, reg, memory), result);
 
     reg->pc += 3;
     cycle += 6;
   
   case 0xfe:
     debug_opcode(str, absolute_x, op, arg);;
-    last_value = readbus(memory, getAddressMode(absolute_x, arg, reg, memory)) + 1;
-    writebus(memory, getAddressMode(absolute_x, arg, reg, memory), last_value);
+    result = (int8_t)readbus(memory, getAddressMode(absolute_x, arg, reg, memory)) + 1;
+    writebus(memory, getAddressMode(absolute_x, arg, reg, memory), result);
 
     reg->pc += 3;
     cycle += 7;
@@ -1015,8 +1040,8 @@ int inc_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     return 0;
   }
 
-  reg->p.Z = last_value == 0 ? 1 : 0;
-  reg->p.N = last_value < 0 ? 1 : 0;
+  reg->p.Z = result == 0 ? 1 : 0;
+  reg->p.N = result < 0 ? 1 : 0;
   
   return 1;
 }
@@ -1084,12 +1109,12 @@ int iny_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
 int eor_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   char *str = "EOR";
 
-  int32_t last_value;
+  int8_t result;
   switch (op)
   {
   case 0x49:
     debug_opcode(str, immediate, op, arg);;
-    last_value = reg->a ^ arg.lsb;
+    result = reg->a ^ arg.lsb;
 
     reg->pc += 2;
     cycle += 2;
@@ -1097,7 +1122,7 @@ int eor_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   
   case 0x45:
     debug_opcode(str, zero_page, op, arg);;
-    last_value = reg->a ^ addressMode(zero_page, arg, reg, memory);
+    result = reg->a ^ (int8_t)addressMode(zero_page, arg, reg, memory);
 
     reg->pc += 2;
     cycle += 3;
@@ -1105,7 +1130,7 @@ int eor_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   
   case 0x55:
     debug_opcode(str, zero_page_x, op, arg);;
-    last_value = reg->a ^ addressMode(zero_page_x, arg, reg, memory);
+    result = reg->a ^ (int8_t)addressMode(zero_page_x, arg, reg, memory);
 
     reg->pc += 2;
     cycle += 4;
@@ -1113,7 +1138,7 @@ int eor_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
 
   case 0x4d:
     debug_opcode(str, absolute, op, arg);;
-    last_value = reg->a ^ addressMode(absolute, arg, reg, memory);
+    result = reg->a ^ (int8_t)addressMode(absolute, arg, reg, memory);
 
     reg->pc += 3;
     cycle += 4;
@@ -1121,7 +1146,7 @@ int eor_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
 
   case 0x5d:
     debug_opcode(str, absolute_x, op, arg);;
-    last_value = reg->a ^ addressMode(absolute_x, arg, reg, memory);
+    result = reg->a ^ (int8_t)addressMode(absolute_x, arg, reg, memory);
 
     reg->pc += 3;
     cycle += 4; // TODO +1 if page crossed
@@ -1129,7 +1154,7 @@ int eor_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
 
   case 0x59:
     debug_opcode(str, absolute_y, op, arg);;
-    last_value = reg->a ^ addressMode(absolute_y, arg, reg, memory);
+    result = reg->a ^ (int8_t)addressMode(absolute_y, arg, reg, memory);
 
     reg->pc += 3;
     cycle += 4; // TODO +1 if page crossed
@@ -1137,7 +1162,7 @@ int eor_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   
   case 0x41:
     debug_opcode(str, indirect_x, op, arg);;
-    last_value = reg->a ^ addressMode(indirect_x, arg, reg, memory);
+    result = reg->a ^ (int8_t)addressMode(indirect_x, arg, reg, memory);
 
     reg->pc += 2;
     cycle += 6;
@@ -1145,7 +1170,7 @@ int eor_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
 
   case 0x51:
     debug_opcode(str, indirect_y, op, arg);;
-    last_value = reg->a ^ addressMode(indirect_y, arg, reg, memory);
+    result = reg->a ^ (int8_t)addressMode(indirect_y, arg, reg, memory);
 
     reg->pc += 2;
     cycle += 5; // TODO +1 if page crossed
@@ -1155,8 +1180,8 @@ int eor_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     return 0;
   }
 
-  reg->p.Z = last_value == 0 ? 1 : 0;
-  reg->p.N = last_value < 0 ? 1 : 0;
+  reg->p.Z = result == 0 ? 1 : 0;
+  reg->p.N = result < 0 ? 1 : 0;
 
   return 1;
 }
@@ -1164,7 +1189,6 @@ int eor_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
 int jmp_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   char *str = "JMP";
 
-  int32_t last_value;
   switch (op)
   {
   case 0x4c:
@@ -1315,8 +1339,8 @@ int ldx_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     return 0;
   }
 
-  reg->p.Z = reg->a == 0 ? 1 : 0;
-  reg->p.N = reg->a < 0 ? 1 : 0;
+  reg->p.Z = reg->x == 0 ? 1 : 0;
+  reg->p.N = reg->x < 0 ? 1 : 0;
 
   return 1;
 }
@@ -1328,7 +1352,7 @@ int ldy_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   {
   case 0xa0:
     debug_opcode(str, immediate, op, arg);;
-    reg->a = arg.lsb;
+    reg->y = arg.lsb;
 
     reg->pc += 2;
     cycle += 2;
@@ -1370,8 +1394,8 @@ int ldy_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     return 0;
   }
 
-  reg->p.Z = reg->a == 0 ? 1 : 0;
-  reg->p.N = reg->a < 0 ? 1 : 0;
+  reg->p.Z = reg->y == 0 ? 1 : 0;
+  reg->p.N = reg->y < 0 ? 1 : 0;
 
   return 1;
 }
@@ -1379,66 +1403,68 @@ int ldy_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
 int lsr_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
   char *str = "LSR";
 
-  int32_t last_value;
+  uint16_t result;
+  uint8_t mem;
   switch (op)
   {
   case 0x4a:
     debug_opcode(str, immediate, op, arg);;
-    last_value = reg->a >> 1;
+    mem = reg->a;
+    result = mem >> 1;
     reg->a >>= 1;
 
     cycle += 2;
     reg->pc += 1;
-    check_processor_status(last_value, reg->a, reg);
     break;
   
   case 0x46:
     debug_opcode(str, zero_page, op, arg);;
-    last_value = addressMode(zero_page, arg, reg, memory) >> 1;
-    writebus(memory, getAddressMode(zero_page, arg, reg, memory), last_value);
+    mem = addressMode(zero_page, arg, reg, memory);
+    result = mem >> 1;
+    writebus(memory, getAddressMode(zero_page, arg, reg, memory), result);
 
     cycle += 5;
     reg->pc += 2;
     // TODO
-    check_processor_status(last_value, *memory[arg.lsb], reg);
     break;
 
   case 0x56:
     debug_opcode(str, zero_page_x, op, arg);;
-    last_value = addressMode(zero_page_x, arg, reg, memory) >> 1;
-    writebus(memory, getAddressMode(zero_page_x, arg, reg, memory), last_value);
+    mem = addressMode(zero_page_x, arg, reg, memory);
+    result = mem >> 1;
+    writebus(memory, getAddressMode(zero_page_x, arg, reg, memory), result);
 
     cycle += 6;
     reg->pc += 2;
-    // TODO
-    check_processor_status(last_value, *memory[arg.lsb + reg->x], reg);
     break;
 
   case 0x4e:
     debug_opcode(str, absolute, op, arg);;
-    last_value = addressMode(absolute, arg, reg, memory) >> 1;
-    writebus(memory, getAddressMode(absolute, arg, reg, memory), last_value);
+    mem = addressMode(absolute, arg, reg, memory);
+    result = mem >> 1;
+    writebus(memory, getAddressMode(absolute, arg, reg, memory), result);
 
     cycle += 6;
     reg->pc += 3;
-    // TODO
-    check_processor_status(last_value, *memory[arg.value], reg);
     break;
 
   case 0x5e:
     debug_opcode(str, absolute_x, op, arg);;
-    last_value = addressMode(absolute_x, arg, reg, memory) >> 1;
-    writebus(memory, getAddressMode(absolute_x, arg, reg, memory), last_value);
+    mem = addressMode(absolute_x, arg, reg, memory);
+    result = mem >> 1;
+    writebus(memory, getAddressMode(absolute_x, arg, reg, memory), result);
 
     cycle += 7;
     reg->pc += 3;
-    // TODO
-    check_processor_status(last_value, *memory[arg.value + reg->x], reg);
     break;
 
   default:
     return 0;
   }
+
+  reg->p.Z = !result;
+  reg->p.N = (result & 0x80) >> 7;
+  reg->p.C = mem & 0x1; // 	Set to contents of old bit 0
 
   return 1;
 }
@@ -1515,7 +1541,8 @@ int ora_opcode(t_registers *reg, t_mem *memory, uint8_t op, union u16 arg) {
     return 0;
   }
 
-  check_processor_status(reg->a, reg->a, reg);
+  reg->p.Z = !reg->a;
+  reg->p.N = (reg->a & 0x80) >> 7;
   return 1;
 }
 
@@ -1866,7 +1893,8 @@ int psp_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
     debug_opcode("PLA", implied, op, (union u16){.value = 0});;
     reg->sp++;
     reg->a = readbus(memory, 0x01ff - reg->sp);
-    check_processor_status(reg->a, reg->a, reg);
+    reg->p.Z = !reg->a;
+    reg->p.N = (reg->a & 0x80) >> 7;
     reg->pc += 1;
     cycle += 3;
     break;
