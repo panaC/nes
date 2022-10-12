@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include "cpu.h"
 #include "debug.h"
 #include "bus.h"
@@ -11,6 +12,14 @@
 // todo:  global variable
 // handle State Machine with cycle
 uint32_t cycle = 0; 
+t_registers __cpu_reg = {
+      .pc = 0,
+      .sp = 0,
+      .p = 0,
+      .a = 0,
+      .x = 0,
+      .y = 0};
+
 
 // TODO
 // implémenter une table de cycle avec les instructions et leur cycles correcspondant 
@@ -1839,7 +1848,7 @@ void irq(t_registers *reg, t_mem *memory) {
   cycle += 7;
 }
 
-int exec(t_mem *memory, t_registers *reg) {
+int cpu_exec(t_mem *memory, t_registers *reg) {
 
   int res = 0;
   uint8_t op = readbus(memory, reg->pc);
@@ -1911,11 +1920,42 @@ int exec(t_mem *memory, t_registers *reg) {
   return 0;
 }
 
+int cpu_run(void* unused) {
+
+  int debug = 0;
+  int brk = 0x0724;
+  uint64_t t = 1000 * 1000 / CPU_FREQ; // tick every 1us // limit to 1Mhz
+  int quit = 0;
+  while (!quit) {
+    if (__cpu_reg.pc == brk) debug = 1;
+    if (debug) {
+      int c = getchar();
+      if (c == 'p') {
+        // hexdumpSnake(*(__memory + 0x200), 1024);
+        continue;
+      } else if (c == 'r') {
+        debug = 0;
+        continue;
+      }
+      // lf 10
+      quit = cpu_exec(__memory, &__cpu_reg);
+      continue;
+    }
+
+    const struct timespec time = {.tv_sec = CPU_FREQ == 1 ? 1 : 0, .tv_nsec = CPU_FREQ == 1 ? 0 : 1000 * t};
+    const int sleep = nanosleep(&time, NULL);
+    quit = cpu_exec(__memory, &__cpu_reg);
+  }
+  
+  return quit;
+}
+
+// used in test
 void run(t_mem *memory, size_t size, t_registers *reg) {
 
   debug("RUN 6502 with a memory of %zu octets", size);
 
-  while (exec(memory, reg) != 0) {
+  while (cpu_exec(memory, reg) != 0) {
 
   }
   

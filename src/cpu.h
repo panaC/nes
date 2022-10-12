@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include "bus.h"
 
+#define CPU_FREQ 1
+
 union u_p {
 
   uint8_t value;
@@ -61,7 +63,11 @@ typedef enum e_mode {
 
 
 void irq(t_registers *reg, t_mem *memory);
+int cpu_run();
+int cpu_exec(t_mem *memory, t_registers *reg);
 void run(t_mem *memory, size_t size, t_registers *reg);
-int exec(t_mem *memory, t_registers *reg);
+
+// global extern var
+extern t_registers __cpu_reg;
 
 #endif

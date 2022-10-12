@@ -4,6 +4,7 @@
 #include "utils.h"
 #include "sdl.h"
 #include "debug.h"
+#include "cpu.h"
 
 uint8_t rom[] = {
   0x20, 0x06, 0x06, 0x20, 0x38, 0x06, 0x20, 0x0d, 0x06, 0x20, 0x2a, 0x06, 0x60, 0xa9, 0x02, 0x85,
@@ -29,37 +30,7 @@ uint8_t rom[] = {
 };
 
 #define START 0x600
-
 static int quit = 0;
-
-static int CPUThread(void *data) {
-  t_registers reg = {
-      .pc = START,
-      .sp = 0,
-      .p = 0,
-      .a = 0,
-      .x = 0,
-      .y = 0};
-
-  int debug = 0;
-  int brk = 0x0724;
-  while (1) {
-    if (reg.pc == brk) debug = 1;
-    if (debug) {
-      int c = getchar();
-      if (c == 'p') {
-        hexdumpSnake(*(__memory + 0x200), 1024);
-        continue;
-      } else if (c == 'r') {
-        debug = 0;
-        continue;
-      }
-      // lf 10
-    }
-
-    quit = exec(__memory, &reg);
-  }
-}
 
 void snake() {
 
@@ -70,10 +41,11 @@ void snake() {
   // 0x600 -> sizeof(rom) : rom
   // memory_size = 0x1000 : 16 * 256 : 4kB
 
-
   for(int i = 0; i < sizeof(rom); i++) {
     __memory[START + i] = rom + i;
   }
+
+  __cpu_reg.pc = START;
 
   hexdump(*(__memory + START), 320);
 
@@ -88,9 +60,9 @@ void snake() {
   int quit = 0;
   SDL_Thread *thread;
 
-  thread = SDL_CreateThread(CPUThread, "CPUThread", (void *)NULL);
+  thread = SDL_CreateThread(cpu_run, "CPUThread", (void *)NULL);
   if (!thread) {
-    printf("CPUThread ERROR");
+    log_error("CPUThread ERROR");
   }
 
   while (quit != -1)

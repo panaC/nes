@@ -97,3 +97,7 @@ void sdl_quit()
   SDL_DestroyWindow(__win);
   SDL_Quit();
 }
+
+uint64_t sdl_getTick() {
+  return SDL_GetTicks64();
+}
