@@ -5,7 +5,9 @@
 #include <stdint.h>
 #include "bus.h"
 
+#ifndef CPU_FREQ
 #define CPU_FREQ 1
+#endif
 
 union u_p {
 
@@ -41,22 +43,18 @@ typedef struct s_registers {
 
 } t_registers;
 
-// typedef struct s_cpu {
-
-//   uint8_t* memory;
-
-//   struct s_registers registers;
-
-// } t_cpu;
-
-// is it usefull ? 
 typedef enum e_mode {
+  accumulator,
+  implied,
+  immediate,
   zero_page,
   zero_page_x,
   zero_page_y,
+  relative,
   absolute,
   absolute_x,
   absolute_y,
+  indirect,
   indirect_x,
   indirect_y,
 } t_e_mode;
