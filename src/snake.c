@@ -31,6 +31,7 @@ uint8_t rom[] = {
 
 #define START 0x600
 static int quit = 0;
+char __lastkeycode = 0;
 
 void snake() {
 
@@ -48,14 +49,6 @@ void snake() {
   __cpu_reg.pc = START;
 
   hexdump(*(__memory + START), 320);
-
-// 1/ launch SDL
-// 2/ launch CPU
-// 3/ get keyboard event
-// 4/ display buffer 0x200 -> 0x5ff -> 32 * 32
-//        grid of 640 * 640 -> *20 -> pitch 20pixels
-
-
 
   int quit = 0;
   SDL_Thread *thread;
@@ -78,6 +71,17 @@ void snake() {
       }
       quit = -1;
 
+    case MOVE_DOWN:
+      __lastkeycode = 0x73;
+      break;
+    case MOVE_UP:
+      __lastkeycode = 0x77;
+      break;
+    case MOVE_LEFT:
+      __lastkeycode = 0x61;
+      break;
+    case MOVE_RIGHT:
+      __lastkeycode = 0x64;
       break;
 
     default:

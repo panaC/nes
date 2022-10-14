@@ -85,6 +85,26 @@ t_sdl_action sdl_processEvent() {
     return QUIT_EVENT;
     break;
 
+  case SDL_KEYDOWN:
+				switch (event.key.keysym.sym) {
+					case SDLK_LEFT:
+						return MOVE_LEFT;
+						break;
+					case SDLK_RIGHT:
+						return MOVE_RIGHT;
+						break;
+					case SDLK_DOWN:
+						return MOVE_DOWN;
+						break;
+					case SDLK_UP:
+						return MOVE_UP;
+						break;
+					case SDLK_RETURN:
+						return PAUSE;
+						break;
+				}
+				break;
+
   default:
     // debug("UNKNOWN EVENT %d", event.type);
     return NO_EVENT;

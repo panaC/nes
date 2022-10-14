@@ -3,13 +3,13 @@
 #include "bus.h"
 #include "debug.h"
 #include "sdl.h"
+#include "snake.h"
 
 #define debug(...) log_x(LOG_BUS, __VA_ARGS__)
 
 // TODO:
 // create a memory table with human readable name to print in bus debug
 
-static int ____show_log = 1;
 t_mem __memory[MEM_SIZE] = {NULL};
 
 void bus_init_memory() {
@@ -31,6 +31,15 @@ static void bus_read_fe_rand(uint8_t *value, uint32_t addr) {
   }
 }
 
+static void bus_read_ff_rand(uint8_t *value, uint32_t addr) {
+  if (addr == 0xff) {
+    // rand
+    *value = __lastkeycode;
+    debug("BUS: last key %d", *value);
+  }
+}
+
+
 static void bus_write_2xx_screen(uint32_t addr, uint8_t value) {
   if (addr >= 0x200 && addr < 0x600) {
     // fill a rect at address to the screen
@@ -39,35 +48,36 @@ static void bus_write_2xx_screen(uint32_t addr, uint8_t value) {
   }
 }
 
-union u16 readbus16(t_mem *memory, uint32_t addr) {
-
-  memory = NULL; // memory not used anymore -> see global variable __memory
+union u16 readbus16(uint32_t addr) {
 
   debug("READ16=0x%x", addr);
   assert(addr <= 0x736); // snake 0x736 bytes used
 
-  ____show_log = 0;
-  union u16 v = {.lsb = readbus(__memory, addr), .msb = readbus(__memory, addr + 1)};
-  ____show_log = 1;
+  union u16 v = {.lsb = readbus(addr), .msb = readbus(addr + 1)};
   return v;
 }
 
-uint8_t readbus(t_mem *memory, uint32_t addr) {
+uint8_t readbus(uint32_t addr) {
 
-  memory = NULL; // memory not used anymore -> see global variable __memory
-
-  if (____show_log)
-    debug("READ=0x%x VALUE=%d/%d/0x%x", addr, *__memory[addr], (int8_t)*__memory[addr], *__memory[addr]);
+  debug("READ=0x%x VALUE=%d/%d/0x%x", addr, *__memory[addr], (int8_t)*__memory[addr], *__memory[addr]);
   assert(addr <= 0x737); // snake 0x736 bytes used // jump to 735 + READ16 736-737
 
   uint8_t value = *__memory[addr];
   bus_read_fe_rand(&value, addr);
+  bus_read_ff_rand(&value, addr);
 
   return value;
 }
-void writebus(t_mem *memory, uint32_t addr, uint8_t value) {
 
-  memory = NULL; // memory not used anymore -> see global variable __memory
+uint8_t readbus_pc() {
+  return readbus(__cpu_reg.pc + 1);
+}
+
+union u16 readbus16_pc(uint32_t addr) {
+  return readbus16(__cpu_reg.pc + 1);
+}
+
+void writebus(uint32_t addr, uint8_t value) {
 
   debug("WRITE=%x VALUE=%d/%d", addr, value, (int8_t)value);
   assert(addr <= 0x736); // snake 0x736 bytes used

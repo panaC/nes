@@ -5,4 +5,6 @@
 
 void snake();
 
+extern char __lastkeycode;
+
 #endif

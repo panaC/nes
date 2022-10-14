@@ -27,9 +27,11 @@ typedef uint8_t* t_mem;
 
 void bus_init_memory(void);
 void bus_quit(void);
-uint8_t readbus(t_mem *memory, uint32_t addr);
-union u16 readbus16(t_mem *memory, uint32_t addr);
-void writebus(t_mem *memory, uint32_t addr, uint8_t value);
+uint8_t readbus(uint32_t addr);
+union u16 readbus16(uint32_t addr);
+uint8_t readbus_pc();
+union u16 readbus16_pc();
+void writebus(uint32_t addr, uint8_t value);
 
 // extern global variable
 extern t_mem __memory[MEM_SIZE];

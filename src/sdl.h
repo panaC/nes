@@ -11,6 +11,11 @@
 typedef enum {
   NO_EVENT = 0,
   QUIT_EVENT,
+  MOVE_UP,
+  MOVE_DOWN,
+  MOVE_LEFT,
+  MOVE_RIGHT,
+  PAUSE
 } t_sdl_action;
 
 void sdl_init();
