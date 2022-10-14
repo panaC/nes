@@ -3,6 +3,6 @@
 
 #include "cpu.h"
 
-void snake(t_mem *memory);
+void snake();
 
 #endif

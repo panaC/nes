@@ -58,7 +58,7 @@ uint8_t readbus(t_mem *memory, uint32_t addr) {
 
   if (____show_log)
     debug("READ=0x%x VALUE=%d/%d/0x%x", addr, *__memory[addr], (int8_t)*__memory[addr], *__memory[addr]);
-  assert(addr <= 0x736); // snake 0x736 bytes used
+  assert(addr <= 0x737); // snake 0x736 bytes used // jump to 735 + READ16 736-737
 
   uint8_t value = *__memory[addr];
   bus_read_fe_rand(&value, addr);

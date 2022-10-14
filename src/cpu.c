@@ -1917,7 +1917,7 @@ int psp_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
 int brk_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
 
   if (op == 0) {
-    debug("BRK");
+    debug_opcode("BRK", implied, op, (union u16){.value = 0});
     irq(reg, memory);
     reg->p.B = 1;
 
@@ -1928,7 +1928,7 @@ int brk_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
 
 int nop_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
   if (op == 0xea) {
-    debug("NOP");
+    debug_opcode("NOP", implied, op, (union u16){.value = 0});
     cycle += 2;
     reg->pc += 1;
     return 1;
@@ -2031,7 +2031,7 @@ int cpu_exec(t_mem *memory, t_registers *reg) {
 int cpu_run(void* unused) {
 
   int debug = 0;
-  int brk = 0x0724;
+  int brk = 0;//0x0724;
   uint64_t t = 1000 * 1000 / CPU_FREQ; // tick every 1us // limit to 1Mhz
   int quit = 0;
   while (!quit) {
