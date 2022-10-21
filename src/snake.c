@@ -34,6 +34,7 @@ uint8_t rom[] = {
 #define START 0x600
 static int quit = 0;
 char __lastkeycode = 0;
+char __pause = 1; // pause at startup
 
 void snake() {
 
@@ -55,7 +56,7 @@ void snake() {
   int quit = 0;
   SDL_Thread *thread;
 
-  thread = SDL_CreateThread(cpu_run, "CPUThread", (void *)NULL);
+  thread = SDL_CreateThread(cpu_run, "CPUThread", (void *)&__pause);
   if (!thread) {
     log_error("CPUThread ERROR");
   }
@@ -88,6 +89,10 @@ void snake() {
     case MOVE_RIGHT:
       __lastkeycode = 0x64;
       debug("MOVE RIGHT");
+      break;
+    case PAUSE:
+      __pause = !__pause;
+      debug("PAUSE");
       break;
 
     default:

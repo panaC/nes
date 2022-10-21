@@ -6,7 +6,7 @@
 #include "bus.h"
 
 #ifndef CPU_FREQ
-#define CPU_FREQ 1
+#define CPU_FREQ (1000 * 1000 * 1) // 10Mhz snake
 #endif
 
 union u_p {

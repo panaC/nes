@@ -963,9 +963,9 @@ int cmp_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 		return 0;
 	}
 
-	reg->p.Z = reg->a == mem ? 1 : 0;
-	reg->p.N = reg->a < mem ? 1 : 0;
-	reg->p.C = reg->a >= mem ? 1 : 0;
+	reg->p.Z = (int8_t)reg->a == mem ? 1 : 0;
+	reg->p.N = (int8_t)reg->a < mem ? 1 : 0;
+	reg->p.C = (int8_t)reg->a >= mem ? 1 : 0;
 
 	return 1;
 }
@@ -1010,9 +1010,9 @@ int cpx_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 		return 0;
 	}
 
-	reg->p.Z = reg->x == mem ? 1 : 0;
-	reg->p.N = reg->x < mem ? 1 : 0;
-	reg->p.C = reg->x >= mem ? 1 : 0;
+	reg->p.Z = (int8_t)reg->x == mem ? 1 : 0;
+	reg->p.N = (int8_t)reg->x < mem ? 1 : 0;
+	reg->p.C = (int8_t)reg->x >= mem ? 1 : 0;
 
 	return 1;
 }
@@ -1057,9 +1057,9 @@ int cpy_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 		return 0;
 	}
 
-	reg->p.Z = reg->y == mem ? 1 : 0;
-	reg->p.N = reg->y < mem ? 1 : 0;
-	reg->p.C = reg->y >= mem ? 1 : 0;
+	reg->p.Z = (int8_t)reg->y == mem ? 1 : 0;
+	reg->p.N = (int8_t)reg->y < mem ? 1 : 0;
+	reg->p.C = (int8_t)reg->y >= mem ? 1 : 0;
 
 	return 1;
 }
@@ -2312,17 +2312,20 @@ int cpu_exec(t_mem *memory, t_registers *reg)
 	return 0;
 }
 
-int cpu_run(void *unused)
+int cpu_run(void *pause)
 {
 
 	int debug = 0;
-	int brk = 0; //0x0734;
-	int cpu_nolog_on_pc[] = {0x072f, 0x0730, 0x0731, 0x0732, -1};
-	uint64_t t = 1000 * 1000 / CPU_FREQ; // tick every 1us // limit to 1Mhz
+	int brk = 0;//0x0694;//0x0734;
+	//int cpu_nolog_on_pc[] = {0x072f, 0x0730, 0x0731, 0x0732, -1};
+	uint64_t t = (1000 * 1000 * 1000) / CPU_FREQ; // tick every 1ns // limit to 1Ghz
+	const struct timespec time = {.tv_sec = CPU_FREQ == 1 ? 1 : 0, .tv_nsec = CPU_FREQ == 1 ? 0 : t};
 	int quit = 0;
-	int log_cpu_set = !!(log_get_level_bin() | LOG_CPU | LOG_REGISTER | LOG_BUS);
+	// int log_cpu_set = !!(log_get_level_bin() | LOG_CPU | LOG_REGISTER | LOG_BUS);
 	while (!quit)
 	{
+
+		while((*(char*)pause) == 1);
 
 		// TODO: create a dedicated debugger function
 		// And replace debug log with the name of instruction and value
@@ -2331,17 +2334,17 @@ int cpu_run(void *unused)
 
 		int i = 0;
 		int flag = 0;
-		if (log_cpu_set) {
-			log_set_level_bin(log_get_level_bin() | LOG_CPU | LOG_REGISTER | LOG_BUS);
-		}
-		while(cpu_nolog_on_pc[i] != -1) {
-			if (cpu_nolog_on_pc[i] == __cpu_reg.pc) {
-				log_set_level_bin(log_get_level_bin() & ~(LOG_CPU | LOG_REGISTER | LOG_BUS)); // unset log_cpu
-				flag = true;
-				break;
-			}
-			i++;
-		}
+		// if (log_cpu_set) {
+		// 	log_set_level_bin(log_get_level_bin() | LOG_CPU | LOG_REGISTER | LOG_BUS);
+		// }
+		// while(cpu_nolog_on_pc[i] != -1) {
+		// 	if (cpu_nolog_on_pc[i] == __cpu_reg.pc) {
+		// 		log_set_level_bin(log_get_level_bin() & ~(LOG_CPU | LOG_REGISTER | LOG_BUS)); // unset log_cpu
+		// 		flag = true;
+		// 		break;
+		// 	}
+		// 	i++;
+		// }
 		if (debug)
 		{
 			putchar('>');
@@ -2363,7 +2366,6 @@ int cpu_run(void *unused)
 			continue;
 		}
 
-		const struct timespec time = {.tv_sec = CPU_FREQ == 1 ? 1 : 0, .tv_nsec = CPU_FREQ == 1 ? 0 : 1000 * t};
 		const int sleep = nanosleep(&time, NULL);
 		quit = cpu_exec(__memory, &__cpu_reg);
 	}

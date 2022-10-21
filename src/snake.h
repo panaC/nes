@@ -6,5 +6,6 @@
 void snake();
 
 extern char __lastkeycode;
+extern char __pause;
 
 #endif
