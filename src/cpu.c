@@ -72,6 +72,31 @@ uint32_t addressmode_indirecty(uint8_t arg) {
 	return readbus(arg) + readbus((arg + 1) % 256) * 256 + __cpu_reg.y;
 }
 
+/**
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ */
+
 void debug_opcode_accumulator(char *str, uint8_t op)
 {
 	debug("$%04x    %02x           %s", __cpu_reg.pc, op, str);
@@ -253,10 +278,11 @@ int adc_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 	reg->a = result;
 
 	reg->p.Z = !result;
-	reg->p.N = (result & 0x80) >> 7;
+	reg->p.N = !!(result & 0x80);
 
 	// http://www.6502.org/tutorials/vflag.html
-	reg->p.C = (result & 0x100) >> 8;
+	// seems to be the right value : see in github nes emulation
+	reg->p.C = !!(result & 0x100);
 	// As stated above, the second purpose of the carry flag
 	// is to indicate when the result of the
 	// addition or subtraction is outside the range 0 to 255, specifically:
@@ -352,8 +378,8 @@ int and_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 	default:
 		return 0;
 	}
-	reg->p.Z = !!reg->a;
-	reg->p.N = reg->a >> 7;
+	reg->p.Z = !reg->a;
+	reg->p.N = !!(reg->a & 0x80);
 
 	return 1;
 }
@@ -426,8 +452,8 @@ int asl_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 	}
 
 	reg->p.Z = !result;
-	reg->p.N = (result & 0x80) >> 7;
-	reg->p.C = (result & 0x100) >> 8; // Set to contents of old bit 7
+	reg->p.N = !!(result & 0x80);
+	reg->p.C = !!(result & 0x80); // Set to contents of old bit 7
 
 	return 1;
 }
@@ -517,8 +543,8 @@ int bit_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 		return 0;
 	}
 	reg->p.Z = !value;
-	reg->p.V = (value & 0x40) >> 6;
-	reg->p.N = (value & 0x80) >> 7;
+	reg->p.V = !!(value & 0x40);
+	reg->p.N = !!(value & 0x80);
 
 	return 1;
 }
@@ -740,10 +766,10 @@ int sbc_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 	reg->a = result;
 
 	reg->p.Z = !result;
-	reg->p.N = (result & 0x80) >> 7;
+	reg->p.N = !!(result & 0x80);
 
 	// http://www.6502.org/tutorials/vflag.html
-	reg->p.C = !((result & 0x80) >> 7);
+	reg->p.C = !(!!(result & 0x100));
 	// As stated above, the second purpose of the carry flag
 	// is to indicate when the result of the
 	// addition or subtraction is outside the range 0 to 255, specifically:
@@ -1093,8 +1119,8 @@ int dec_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 		return 0;
 	}
 
-	reg->p.Z = result == 0 ? 1 : 0;
-	reg->p.N = result < 0 ? 1 : 0;
+	reg->p.Z = !result; 
+	reg->p.N = !!(result & 0x80);
 
 	return 1;
 }
@@ -1154,8 +1180,8 @@ int inc_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 		return 0;
 	}
 
-	reg->p.Z = result == 0 ? 1 : 0;
-	reg->p.N = result < 0 ? 1 : 0;
+	reg->p.Z = !result;
+	reg->p.N = !!(result & 0x80);
 
 	return 1;
 }
@@ -1166,9 +1192,9 @@ int dex_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 	if (op == 0xca)
 	{
 		debug_opcode_implied("DEX", op);
-		reg->x -= 1;
-		reg->p.Z = reg->x == 0 ? 1 : 0;
-		reg->p.N = reg->x < 0 ? 1 : 0;
+		reg->x = (reg->x - 1) & 0xff;
+		reg->p.Z = !reg->x;
+		reg->p.N = !!(reg->x & 0x80);
 		reg->pc += 1;
 		cycle += 2;
 		return 1;
@@ -1182,9 +1208,9 @@ int dey_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 	if (op == 0x88)
 	{
 		debug_opcode_implied("DEY", op);
-		reg->y -= 1;
-		reg->p.Z = reg->y == 0 ? 1 : 0;
-		reg->p.N = reg->y < 0 ? 1 : 0;
+		reg->y = (reg->y - 1) & 0xff;
+		reg->p.Z = !reg->y;
+		reg->p.N = !!(reg->y & 0x80);
 		reg->pc += 1;
 		cycle += 2;
 		return 1;
@@ -1198,9 +1224,9 @@ int inx_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 	if (op == 0xe8)
 	{
 		debug_opcode_implied("INX", op);
-		reg->x += 1;
-		reg->p.Z = reg->x == 0 ? 1 : 0;
-		reg->p.N = reg->x < 0 ? 1 : 0;
+		reg->x = (reg->x + 1) & 0xff;
+		reg->p.Z = !reg->x;
+		reg->p.N = !!(reg->x & 0x80);
 		reg->pc += 1;
 		cycle += 2;
 		return 1;
@@ -1214,9 +1240,9 @@ int iny_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 	if (op == 0xc8)
 	{
 		debug_opcode_implied("INY", op);
-		reg->y += 1;
-		reg->p.Z = reg->y == 0 ? 1 : 0;
-		reg->p.N = reg->y < 0 ? 1 : 0;
+		reg->y = (reg->y + 1) & 0xff;
+		reg->p.Z = !reg->y;
+		reg->p.N = !!(reg->y & 0x80);
 		reg->pc += 1;
 		cycle += 2;
 		return 1;
@@ -1309,8 +1335,10 @@ int eor_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 		return 0;
 	}
 
-	reg->p.Z = result == 0 ? 1 : 0;
-	reg->p.N = result < 0 ? 1 : 0;
+	reg->a = result;
+
+	reg->p.Z = !result;
+	reg->p.N = !!(result & 0x80);
 
 	return 1;
 }
@@ -1428,8 +1456,8 @@ int lda_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 		return 0;
 	}
 
-	reg->p.Z = reg->a == 0 ? 1 : 0;
-	reg->p.N = reg->a < 0 ? 1 : 0;
+	reg->p.Z = !reg->a; 
+	reg->p.N = !!(reg->a & 0x80);
 
 	return 1;
 }
@@ -1491,8 +1519,8 @@ int ldx_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 		return 0;
 	}
 
-	reg->p.Z = reg->x == 0 ? 1 : 0;
-	reg->p.N = reg->x < 0 ? 1 : 0;
+	reg->p.Z = !reg->x;
+	reg->p.N = !!(reg->x & 0x80);
 
 	return 1;
 }
@@ -1554,8 +1582,8 @@ int ldy_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 		return 0;
 	}
 
-	reg->p.Z = reg->y == 0 ? 1 : 0;
-	reg->p.N = reg->y < 0 ? 1 : 0;
+	reg->p.Z = !reg->y;
+	reg->p.N = !!(reg->y & 0x80);
 
 	return 1;
 }
@@ -1636,7 +1664,7 @@ int lsr_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 	}
 
 	reg->p.Z = !result;
-	reg->p.N = (result & 0x80) >> 7;
+	reg->p.N = !!(result & 0x80);
 	reg->p.C = mem & 0x1; // 	Set to contents of old bit 0
 
 	return 1;
@@ -1679,7 +1707,7 @@ int ora_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 	case 0x0d:
 		uarg = readbus16_pc();
 		debug_opcode_absolute(str, op, uarg);
-		reg->a &= readbus(addressmode_absolute(uarg));
+		reg->a |= readbus(addressmode_absolute(uarg));
 
 		cycle += 4;
 		reg->pc += 3;
@@ -1688,7 +1716,7 @@ int ora_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 	case 0x1d:
 		uarg = readbus16_pc();
 		debug_opcode_absolutex(str, op, uarg);
-		reg->a &= readbus(addressmode_absolutex(uarg));
+		reg->a |= readbus(addressmode_absolutex(uarg));
 
 		cycle += 4; // Todo +1 if page crossed
 		reg->pc += 3;
@@ -1726,7 +1754,7 @@ int ora_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 	}
 
 	reg->p.Z = !reg->a;
-	reg->p.N = (reg->a & 0x80) >> 7;
+	reg->p.N = !!(reg->a & 0x80);
 	return 1;
 }
 
@@ -1976,8 +2004,8 @@ int rol_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 		return 0;
 	}
 
-	reg->p.Z = value == 0 ? 1 : 0;
-	reg->p.N = value < 0 ? 1 : 0;
+	reg->p.Z = !value;
+	reg->p.N = !!(value & 0x80);
 
 	return 1;
 }
@@ -2068,8 +2096,8 @@ int ror_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 		return 0;
 	}
 
-	reg->p.Z = value == 0 ? 1 : 0;
-	reg->p.N = value < 0 ? 1 : 0;
+	reg->p.Z = !value;
+	reg->p.N = !!(value & 0x80);
 
 	return 1;
 	;
@@ -2278,8 +2306,8 @@ int cpu_exec(t_mem *memory, t_registers *reg)
 		reg->pc++;
 	}
 
-	print_register(reg);
 	// debug("cycle=%d", cycle);
+	print_register(&__cpu_reg);
 
 	return 0;
 }
@@ -2288,9 +2316,11 @@ int cpu_run(void *unused)
 {
 
 	int debug = 0;
-	int brk = 0;						 // 0x0724;
+	int brk = 0; //0x0734;
+	int cpu_nolog_on_pc[] = {0x072f, 0x0730, 0x0731, 0x0732, -1};
 	uint64_t t = 1000 * 1000 / CPU_FREQ; // tick every 1us // limit to 1Mhz
 	int quit = 0;
+	int log_cpu_set = !!(log_get_level_bin() | LOG_CPU | LOG_REGISTER | LOG_BUS);
 	while (!quit)
 	{
 
@@ -2298,8 +2328,25 @@ int cpu_run(void *unused)
 		// And replace debug log with the name of instruction and value
 		if (__cpu_reg.pc == brk)
 			debug = 1;
+
+		int i = 0;
+		int flag = 0;
+		if (log_cpu_set) {
+			log_set_level_bin(log_get_level_bin() | LOG_CPU | LOG_REGISTER | LOG_BUS);
+		}
+		while(cpu_nolog_on_pc[i] != -1) {
+			if (cpu_nolog_on_pc[i] == __cpu_reg.pc) {
+				log_set_level_bin(log_get_level_bin() & ~(LOG_CPU | LOG_REGISTER | LOG_BUS)); // unset log_cpu
+				flag = true;
+				break;
+			}
+			i++;
+		}
 		if (debug)
 		{
+			putchar('>');
+			putchar(' ');
+			fflush(stdout);
 			int c = getchar();
 			if (c == 'p')
 			{

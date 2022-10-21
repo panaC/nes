@@ -79,7 +79,7 @@ union u16 readbus16_pc(uint32_t addr) {
 
 void writebus(uint32_t addr, uint8_t value) {
 
-  debug("WRITE=%x VALUE=%d/%d", addr, value, (int8_t)value);
+  debug("WRITE=0x%x VALUE=%d/%d", addr, value, (int8_t)value);
   assert(addr <= 0x736); // snake 0x736 bytes used
   bus_write_2xx_screen(addr, value);
   *__memory[addr] = value;

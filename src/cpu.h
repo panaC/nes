@@ -35,30 +35,12 @@ typedef struct s_registers {
 
   union u_p p;
 
-  int8_t a; // not unsigned 
-
-  int8_t x;
-
-  int8_t y;
+  // need to be int16 for correct overflow handling
+  int16_t a;
+  int16_t x;
+  int16_t y;
 
 } t_registers;
-
-typedef enum e_mode {
-  accumulator,
-  implied,
-  immediate,
-  zero_page,
-  zero_page_x,
-  zero_page_y,
-  relative,
-  absolute,
-  absolute_x,
-  absolute_y,
-  indirect,
-  indirect_x,
-  indirect_y,
-} t_e_mode;
-
 
 void irq(t_registers *reg, t_mem *memory);
 int cpu_run();

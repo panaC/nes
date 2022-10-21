@@ -6,6 +6,8 @@
 #include "debug.h"
 #include "cpu.h"
 
+#define debug(...) log_x(LOG_DEBUG, __VA_ARGS__)
+
 uint8_t rom[] = {
   0x20, 0x06, 0x06, 0x20, 0x38, 0x06, 0x20, 0x0d, 0x06, 0x20, 0x2a, 0x06, 0x60, 0xa9, 0x02, 0x85,
   0x02, 0xa9, 0x04, 0x85, 0x03, 0xa9, 0x11, 0x85, 0x10, 0xa9, 0x10, 0x85, 0x12, 0xa9, 0x0f, 0x85,
@@ -73,15 +75,19 @@ void snake() {
 
     case MOVE_DOWN:
       __lastkeycode = 0x73;
+      debug("MOVE DOWN");
       break;
     case MOVE_UP:
       __lastkeycode = 0x77;
+      debug("MOVE UP");
       break;
     case MOVE_LEFT:
       __lastkeycode = 0x61;
+      debug("MOVE LEFT");
       break;
     case MOVE_RIGHT:
       __lastkeycode = 0x64;
+      debug("MOVE RIGHT");
       break;
 
     default:

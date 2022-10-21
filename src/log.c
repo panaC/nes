@@ -52,7 +52,7 @@ static struct
        .callbacks = {NULL}};
 
 static const char *level_strings[] = {
-    "ERROR", "DEBUG", "BUS", "SDL", "CPU", "PARSER"};
+    "ERROR", "DEBUG", "BUS", "SDL", "CPU", "PARSER", "REGISTER"};
 
 #ifdef LOG_USE_COLOR
 static const char *level_colors[] = {
@@ -128,8 +128,16 @@ void log_set_lock(log_LockFn fn, void *udata) {
 
 
 void log_set_level(int level) {
-  int lvl = 1 << level; 
+  int lvl = 1 << level;
   L.level = lvl;
+}
+
+void log_set_level_bin(int lvl) {
+  L.level = lvl;
+}
+
+int log_get_level_bin(int level) {
+  return L.level;
 }
 
 

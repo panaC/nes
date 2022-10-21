@@ -109,6 +109,8 @@ t_sdl_action sdl_processEvent() {
     // debug("UNKNOWN EVENT %d", event.type);
     return NO_EVENT;
   }
+
+  return NO_EVENT;
 }
 
 void sdl_quit()
