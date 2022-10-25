@@ -7,45 +7,44 @@
 
 #define debug(...) log_x(LOG_BUS, __VA_ARGS__)
 
-// TODO:
-// create a memory table with human readable name to print in bus debug
+// extern global
+t_mem __memory[MEM_SIZE] = {0};
 
-t_mem __memory[MEM_SIZE] = {NULL};
+#define EVENT_BUS_FN_SIZE 16
+// global
+readwritefn readFnEventBus[EVENT_BUS_FN_SIZE] = {NULL};
+size_t readEventBusSize = 0;
+readwritefn writeFnEventBus[EVENT_BUS_FN_SIZE] = {NULL};
+size_t writeEventBusSize = 0;
 
 void bus_init_memory() {
-  uint8_t* rawmem = (uint8_t*) malloc(MEM_SIZE);
+  uint8_t *rawmem = (uint8_t *)malloc(MEM_SIZE);
   bzero(rawmem, MEM_SIZE);
   for (int i = 0; i < MEM_SIZE; i++) {
     __memory[i] = rawmem + i;
   }
 }
 
-void bus_quit(void){
+readwritefn bus_read_on(readwritefn fn) {
+  if (!fn) return NULL;
+  for (int i = 0; i < readEventBusSize; i++) {
+    if (fn == readFnEventBus[i]) return NULL;
+  }
+  readFnEventBus[readEventBusSize] = fn;
+  readEventBusSize++;
+
+  return fn;
 }
 
-static void bus_read_fe_rand(uint8_t *value, uint32_t addr) {
-  if (addr == 0xfe) {
-    // rand
-    *value = rand() % 256;
-    debug("BUS: rand value %d", *value);
+readwritefn bus_write_on(readwritefn fn) {
+  if (!fn) return NULL;
+  for (int i = 0; i < readEventBusSize; i++) {
+    if (fn == readFnEventBus[i]) return NULL;
   }
-}
+  writeFnEventBus[writeEventBusSize] = fn;
+  writeEventBusSize++;
 
-static void bus_read_ff_rand(uint8_t *value, uint32_t addr) {
-  if (addr == 0xff) {
-    // rand
-    *value = __lastkeycode;
-    debug("BUS: last key %d", *value);
-  }
-}
-
-
-static void bus_write_2xx_screen(uint32_t addr, uint8_t value) {
-  if (addr >= 0x200 && addr < 0x600) {
-    // fill a rect at address to the screen
-    sdl_setPixelWithPitch(addr - 0x200, value ? 0xffffffff : 0);
-    debug("SET PIXEL X=%d Y=%d", (addr-0x200) % 32, (addr-0x200) / 32);
-  }
+  return fn;
 }
 
 union u16 readbus16(uint32_t addr) {
@@ -63,8 +62,9 @@ uint8_t readbus(uint32_t addr) {
   assert(addr <= 0x737); // snake 0x736 bytes used // jump to 735 + READ16 736-737
 
   uint8_t value = *__memory[addr];
-  bus_read_fe_rand(&value, addr);
-  bus_read_ff_rand(&value, addr);
+  for (int i = 0; i < readEventBusSize; i++) {
+    value = readFnEventBus[i](value, addr);
+  }
 
   return value;
 }
@@ -80,7 +80,10 @@ union u16 readbus16_pc(uint32_t addr) {
 void writebus(uint32_t addr, uint8_t value) {
 
   debug("WRITE=0x%x VALUE=%d/%d", addr, value, (int8_t)value);
-  assert(addr <= 0x736); // snake 0x736 bytes used
-  bus_write_2xx_screen(addr, value);
+
+  for (int i = 0; i < writeEventBusSize; i++) {
+    value = writeFnEventBus[i](value, addr);
+  }
+
   *__memory[addr] = value;
 }

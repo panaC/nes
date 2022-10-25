@@ -5,6 +5,7 @@
 #include "sdl.h"
 #include "debug.h"
 #include "cpu.h"
+#include "bus.h"
 
 #define debug(...) log_x(LOG_DEBUG, __VA_ARGS__)
 
@@ -36,6 +37,31 @@ static int quit = 0;
 char __lastkeycode = 0;
 char __pause = 1; // pause at startup
 
+uint8_t bus_read_fe_rand(uint8_t value, uint32_t addr) {
+  if (addr == 0xfe) {
+    value =  rand() % 256;
+    debug("BUS: rand value %d", value);
+  }
+  return value;
+}
+
+uint8_t bus_read_ff_rand(uint8_t value, uint32_t addr) {
+  if (addr == 0xff) {
+    value = __lastkeycode;
+    debug("BUS: last key %d", value);
+  }
+  return value;
+}
+
+uint8_t bus_write_2xx_screen(uint8_t value, uint32_t addr) {
+  if (addr >= 0x200 && addr < 0x600) {
+    // fill a rect at address to the screen
+    sdl_setPixelWithPitch(addr - 0x200, value ? 0xffffffff : 0);
+    debug("SET PIXEL X=%d Y=%d", (addr-0x200) % 32, (addr-0x200) / 32);
+  }
+  return value;
+}
+
 void snake() {
 
   // memory map
@@ -52,6 +78,10 @@ void snake() {
   __cpu_reg.pc = START;
 
   hexdump(*(__memory + START), 320);
+
+  bus_write_on(&bus_write_2xx_screen);
+  bus_read_on(&bus_read_fe_rand);
+  bus_read_on(&bus_read_ff_rand);
 
   int quit = 0;
   SDL_Thread *thread;
