@@ -12,6 +12,136 @@
 // todo:  global variable
 // handle State Machine with cycle
 uint32_t cycle = 0;
+
+struct instruction _op[0xff] = {0};
+
+void debug_opcode(enum e_addressMode mode, char *str, uint8_t op, union u16 arg) {
+
+	switch (mode)
+	{
+	case ACCUMULATOR:
+		debug("$%04x    %02x           %s", __cpu_reg.pc, op, str);
+		break;
+	case IMPLIED:
+		debug("$%04x    %02x           %s", __cpu_reg.pc, op, str);
+		break;
+	case IMMEDIATE:
+		debug("$%04x    %02x %02x        %s #$%02x", __cpu_reg.pc, op, arg, str, arg.lsb);
+		break;
+	case ABSOLUTE:
+		debug("$%04x    %02x %02x %02x     %s $%04x", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
+		break;
+	case ZEROPAGE:
+		debug("$%04x    %02x %02x        %s $%02x", __cpu_reg.pc, op, arg, str, arg.lsb);
+		break;
+	case RELATIVE:
+		debug("$%04x    %02x %02x        %s $%02x", __cpu_reg.pc, op, arg, str, arg.lsb);
+		break;
+	case ABSOLUTEX:
+		debug("$%04x    %02x %02x %02x     %s $%04x,X", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
+		break;
+	case ABSOLUTEY:
+		debug("$%04x    %02x %02x %02x     %s $%04x,Y", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
+		break;
+	case ZEROPAGEX:
+		debug("$%04x    %02x %02x        %s $%02x,X", __cpu_reg.pc, op, arg, str, arg.lsb);
+		break;
+	case ZEROPAGEY:
+		debug("$%04x    %02x %02x        %s $%02x,Y", __cpu_reg.pc, op, arg, str, arg.lsb);
+		break;
+	case INDIRECT:
+		debug("$%04x    %02x %02x %02x     %s ($%04x)", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
+		break;
+	case INDIRECTX:
+		debug("$%04x    %02x %02x        %s ($%02x,X)", __cpu_reg.pc, op, arg, str, arg.lsb);
+		break;
+	case INDIRECTY:
+		debug("$%04x    %02x %02x        %s ($%02x,Y)", __cpu_reg.pc, op, arg, str, arg.lsb);
+		break;
+
+	default:
+		break;
+	}
+
+}
+
+uint32_t addressmode(enum e_addressMode mode, union u16 arg) {
+
+	switch (mode)
+	{
+	case ZEROPAGE:
+		return arg.lsb;
+	case ZEROPAGEX:
+		return (arg.lsb + __cpu_reg.x) % 256;
+	case ZEROPAGEY:
+		return (arg.lsb + __cpu_reg.y) % 256;
+	case ABSOLUTE:
+		return arg.value;
+	case ABSOLUTEX:
+		return arg.value + __cpu_reg.x;
+	case ABSOLUTEY:
+		return arg.value + __cpu_reg.y;
+	case INDIRECTX:
+		return readbus((arg.lsb + __cpu_reg.x) % 256) + readbus((arg.lsb + __cpu_reg.x + 1) % 256) * 256;
+	case INDIRECTY:
+		return readbus(arg.lsb) + readbus((arg.lsb + 1) % 256) * 256 + __cpu_reg.y;
+	}
+
+	assert(0);
+	return 0;
+}
+
+int16_t illegalInstruction() {
+	assert(0);
+
+	return 0;
+}
+
+void nop() {
+
+	// nop
+}
+
+int16_t adc_immediate(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.a + uarg.lsb + __cpu_reg.p.C;
+}
+
+int16_t adc(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.a + readbus(addressmode(mode, uarg)) + __cpu_reg.p.C;
+}
+
+void adc_sp(int16_t result) {
+
+	__cpu_reg.a = result;
+
+	__cpu_reg.p.Z = !result;
+	__cpu_reg.p.N = !!(result & 0x80);
+
+	// http://www.6502.org/tutorials/vflag.html
+	// seems to be the right value : see in github nes emulation
+	__cpu_reg.p.C = !!(result & 0x100);
+	// As stated above, the second purpose of the carry flag
+	// is to indicate when the result of the
+	// addition or subtraction is outside the range 0 to 255, specifically:
+	// When the addition result is 0 to 255, the carry is cleared.
+	// When the addition result is greater than 255, the carry is set.
+
+	// http://www.6502.org/tutorials/vflag.html
+	__cpu_reg.p.V = result >= 0 ? (result & 0x100) >> 8 : !((result & 0x80) >> 7);
+}
+
+struct instruction tab[] = {
+	{"ADC", 	0x69, 	IMMEDIATE, 	2, 	2, 	0, 	&adc_immediate, 	&adc_sp},
+	{"ADC", 	0x65, 	ZEROPAGE, 	2, 	3, 	0, 	&adc, 						&adc_sp},
+	{"ADC", 	0x75, 	ZEROPAGEX, 	2, 	4, 	0, 	&adc, 						&adc_sp},
+	{"ADC", 	0x6d, 	ABSOLUTE, 	3, 	4, 	0, 	&adc, 						&adc_sp},
+	{"ADC", 	0x7d, 	ABSOLUTEX, 	3, 	4, 	1, 	&adc, 						&adc_sp},
+	{"ADC", 	0x79, 	ABSOLUTEY, 	3, 	4, 	0, 	&adc, 						&adc_sp},
+	{"ADC", 	0x61, 	INDIRECTX, 	2, 	6, 	0, 	&adc, 						&adc_sp},
+	{"ADC", 	0x71, 	INDIRECTY, 	2, 	5, 	1, 	&adc, 						&adc_sp},
+};
+
+// global extern
 t_registers __cpu_reg = {
 	.pc = 0,
 	.sp = 0,
@@ -20,14 +150,94 @@ t_registers __cpu_reg = {
 	.x = 0,
 	.y = 0};
 
-// TODO
-// implémenter une table de cycle avec les instructions et leur cycles correcspondant
-// permet de créer une machine aà état finis sur l'enchainenement des instructions, la logique de l'instruction sera déclenchée une fois que le cycle est complet (a voir dans le futur si toujours vrais)
-// attention car table de cycle pas possible pour les instructions avec page crossed cycle .. comment faire ?
+union u16 read_arg(enum e_addressMode mode) {
+
+	switch (mode)
+	{
+	case ACCUMULATOR:
+		return (union u16){.value = 0};
+	case IMPLIED:
+		return (union u16){.value = 0};
+	case IMMEDIATE:
+		return (union u16){.value = readbus_pc()};
+	case ABSOLUTE:
+		return readbus16_pc();
+	case ZEROPAGE:
+		return (union u16){.value = readbus_pc()};
+	case RELATIVE:
+		return (union u16){.value = readbus_pc()};
+	case ABSOLUTEX:
+		return readbus16_pc();
+	case ABSOLUTEY:
+		return readbus16_pc();
+	case ZEROPAGEX:
+		return (union u16){.value = readbus_pc()};
+	case ZEROPAGEY:
+		return (union u16){.value = readbus_pc()};
+	case INDIRECT:
+		return readbus16_pc();
+	case INDIRECTX:
+		return (union u16){.value = readbus_pc()};
+	case INDIRECTY:
+		return (union u16){.value = readbus_pc()};
+	}
+
+	return (union u16){.value = 0};
+}
+
+
+static void handle_op(struct instruction op) {
+
+	static int cycles_remaining = 0;
+	static int cycles_done = false;
+
+	// TODO: Handle reset
+	if (cycles_remaining) {
+		cycles_remaining--;
+		cycles_done = !cycles_remaining;
+		return ;
+	}
+
+	// 1. read the arg in function of addressMode
+	union u16 uarg = read_arg(op.mode);
+
+	// 2. page crossed
+	if (op.crossed) {
+		if (uarg.lsb + __cpu_reg.x > 0xff) {
+			op.cycles++;
+		}
+	}
+
+	// 3. cycles
+	if (!cycles_done) {
+		cycles_remaining = op.cycles - 1;
+		return ;
+	}
+
+	// 4. debug
+	debug_opcode(op.mode, op.str, op.code, uarg);
+
+	// 5. algo
+	uint16_t result = op.fn(op.mode, uarg);
+
+	// 6. set to registers
+	op.end(result);
+
+	// 7. increment pc
+	__cpu_reg.pc += op.size;
+
+}
 
 // https://www.pagetable.com/?p=410
 void cpu_init()
 {
+	for (int i = 0; i < 0xff; i++) {
+		_op[i] = (struct instruction){"", 0x00, IMPLIED, 1, 1, 0, &illegalInstruction, &nop};
+	}
+	for (int i = 0; i < (sizeof(tab)/sizeof(struct instruction)); i++) {
+		_op[tab[i].code] = tab[i];
+	}
+
 	t_registers *reg = &__cpu_reg;
 	t_mem *memory = __memory; 
 
@@ -41,6 +251,7 @@ void cpu_init()
 	bzero(memory[0x4000], 16);
 	bzero(memory[0x4010], 4);
 }
+
 
 uint32_t addressmode_zeropage(uint8_t arg) {
 	return arg;
@@ -98,6 +309,8 @@ uint32_t addressmode_indirecty(uint8_t arg) {
  * 
  * 
  */
+
+
 
 void debug_opcode_accumulator(char *str, uint8_t op)
 {
@@ -163,6 +376,7 @@ void debug_opcode_indirecty(char *str, uint8_t op, uint8_t arg)
 {
 	debug("$%04x    %02x %02x        %s ($%02x,Y)", __cpu_reg.pc, op, arg, str, arg);
 }
+
 
 int adc_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 {
@@ -2246,6 +2460,11 @@ int cpu_exec(t_mem *memory, t_registers *reg)
 
 	int res = 0;
 	uint8_t op = readbus(reg->pc);
+
+	if (strcmp(_op[op].str, "") != 0) {
+		handle_op(_op[op]);
+		res = 1;
+	}
 #ifdef DEBUG_CPU
 	if (op == 0)
 	{
@@ -2256,7 +2475,7 @@ int cpu_exec(t_mem *memory, t_registers *reg)
 #else
 	res += brk_opcode(reg, memory, op);
 #endif
-	res += adc_opcode(reg, memory, op);
+	// res += adc_opcode(reg, memory, op);
 	res += and_opcode(reg, memory, op);
 	res += asl_opcode(reg, memory, op);
 	res += bcc_opcode(reg, memory, op);

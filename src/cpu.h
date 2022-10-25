@@ -42,6 +42,36 @@ typedef struct s_registers {
 
 } t_registers;
 
+enum e_addressMode {
+  ACCUMULATOR,
+  IMPLIED,
+  IMMEDIATE,
+  RELATIVE,
+  ZEROPAGE,
+  ZEROPAGEX,
+  ZEROPAGEY,
+  ABSOLUTE,
+  ABSOLUTEX,
+  ABSOLUTEY,
+  INDIRECT,
+  INDIRECTX,
+  INDIRECTY,
+};
+
+typedef int16_t (*opfn)(enum e_addressMode mode, union u16 uarg);
+typedef void (*spfn)(int16_t value);
+
+struct instruction {
+  char *str;
+  uint8_t code;
+  enum e_addressMode mode;
+  int size;
+  int cycles;
+  int crossed;
+  opfn fn;
+  spfn end;
+};
+
 void cpu_init();
 void irq(t_registers *reg, t_mem *memory);
 int cpu_run();
