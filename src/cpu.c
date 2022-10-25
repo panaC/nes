@@ -102,20 +102,22 @@ void nop() {
 	// nop
 }
 
+void sp_zn(int16_t result) {
+	__cpu_reg.p.Z = !result;
+	__cpu_reg.p.N = !!(result & 0x80);
+}
+
 int16_t adc_immediate(enum e_addressMode mode, union u16 uarg) {
-	return __cpu_reg.a + uarg.lsb + __cpu_reg.p.C;
+	return (__cpu_reg.a += uarg.lsb + __cpu_reg.p.C, __cpu_reg.a);
 }
 
 int16_t adc(enum e_addressMode mode, union u16 uarg) {
-	return __cpu_reg.a + readbus(addressmode(mode, uarg)) + __cpu_reg.p.C;
+	return (__cpu_reg.a += readbus(addressmode(mode, uarg)) + __cpu_reg.p.C, __cpu_reg.a);
 }
 
 void adc_sp(int16_t result) {
 
-	__cpu_reg.a = result;
-
-	__cpu_reg.p.Z = !result;
-	__cpu_reg.p.N = !!(result & 0x80);
+	sp_zn(result);
 
 	// http://www.6502.org/tutorials/vflag.html
 	// seems to be the right value : see in github nes emulation
@@ -130,6 +132,104 @@ void adc_sp(int16_t result) {
 	__cpu_reg.p.V = result >= 0 ? (result & 0x100) >> 8 : !((result & 0x80) >> 7);
 }
 
+void asl_sp(int16_t result) {
+
+	sp_zn(result);
+	__cpu_reg.p.C = !!(result & 0x80); // Set to contents of old bit 7
+}
+
+int16_t and_immediate(enum e_addressMode mode, union u16 uarg) {
+	return (__cpu_reg.a &= uarg.lsb, __cpu_reg.a);
+}
+
+int16_t and(enum e_addressMode mode, union u16 uarg) {
+	return (__cpu_reg.a &= readbus(addressmode(mode, uarg)), __cpu_reg.a);
+}
+
+int16_t asl_accumulator(enum e_addressMode mode, union u16 uarg){
+	return (__cpu_reg.a <<= 1, __cpu_reg.a << 1);
+}
+
+int16_t asl(enum e_addressMode mode, union u16 uarg) {
+	uint32_t addr = addressmode(mode, uarg);
+	uint16_t result = readbus(addr) << 1;
+	writebus(addr, result);
+	return result;
+}
+
+int16_t bcc(enum e_addressMode mode, union u16 uarg) {
+	if (__cpu_reg.p.C == 0)
+		__cpu_reg.pc += (int8_t)uarg.lsb;
+	return 0;
+}
+
+int16_t bcs(enum e_addressMode mode, union u16 uarg) {
+	if (__cpu_reg.p.C == 1)
+		__cpu_reg.pc += (int8_t)uarg.lsb;
+	return 0;
+}
+
+int16_t beq(enum e_addressMode mode, union u16 uarg) {
+	if (__cpu_reg.p.Z == 1)
+		__cpu_reg.pc += (int8_t)uarg.lsb;
+	return 0;
+}
+
+int16_t bmi(enum e_addressMode mode, union u16 uarg) {
+	if (__cpu_reg.p.N == 1)
+		__cpu_reg.pc += (int8_t)uarg.lsb;
+	return 0;
+}
+
+int16_t bne(enum e_addressMode mode, union u16 uarg) {
+	if (__cpu_reg.p.Z == 0)
+		__cpu_reg.pc += (int8_t)uarg.lsb;
+	return 0;
+}
+
+int16_t bpl(enum e_addressMode mode, union u16 uarg) {
+	if (__cpu_reg.p.N == 0)
+		__cpu_reg.pc += (int8_t)uarg.lsb;
+	return 0;
+}
+
+int16_t bvc(enum e_addressMode mode, union u16 uarg) {
+	if (__cpu_reg.p.V == 0)
+		__cpu_reg.pc += (int8_t)uarg.lsb;
+	return 0;
+}
+
+int16_t bvs(enum e_addressMode mode, union u16 uarg) {
+	if (__cpu_reg.p.V == 1)
+		__cpu_reg.pc += (int8_t)uarg.lsb;
+	return 0;
+}
+
+int16_t bit(enum e_addressMode mode, union u16 uarg) {
+
+	int8_t value = __cpu_reg.a & readbus(addressmode(mode, uarg));
+
+	__cpu_reg.p.Z = !value;
+	__cpu_reg.p.V = !!(value & 0x40);
+	__cpu_reg.p.N = !!(value & 0x80);
+}
+
+int16_t clc(enum e_addressMode mode, union u16 uarg) {
+	__cpu_reg.p.C = 0;
+}
+
+int16_t cld(enum e_addressMode mode, union u16 uarg) {
+	__cpu_reg.p.D = 0;
+}
+
+int16_t cli(enum e_addressMode mode, union u16 uarg) {
+	__cpu_reg.p.I = 0;
+}
+
+int16_t clv(enum e_addressMode mode, union u16 uarg) {
+	__cpu_reg.p.V = 0;
+}
+
 struct instruction tab[] = {
 	{"ADC", 	0x69, 	IMMEDIATE, 	2, 	2, 	0, 	&adc_immediate, 	&adc_sp},
 	{"ADC", 	0x65, 	ZEROPAGE, 	2, 	3, 	0, 	&adc, 						&adc_sp},
@@ -139,6 +239,40 @@ struct instruction tab[] = {
 	{"ADC", 	0x79, 	ABSOLUTEY, 	3, 	4, 	0, 	&adc, 						&adc_sp},
 	{"ADC", 	0x61, 	INDIRECTX, 	2, 	6, 	0, 	&adc, 						&adc_sp},
 	{"ADC", 	0x71, 	INDIRECTY, 	2, 	5, 	1, 	&adc, 						&adc_sp},
+
+	{"AND",		0x29,		IMMEDIATE, 	2, 	2,	0,	&and_immediate,		&sp_zn},
+	{"AND",		0x25,		ZEROPAGE, 	2, 	3,	0,	&and,							&sp_zn},
+	{"AND",		0x35,		ZEROPAGEX, 	2, 	4,	0,	&and,							&sp_zn},
+	{"AND",		0x2d,		ABSOLUTE, 	3, 	4,	0,	&and,							&sp_zn},
+	{"AND",		0x3d,		ABSOLUTEX, 	3, 	4,	1,	&and,							&sp_zn},
+	{"AND",		0x39,		ABSOLUTEY, 	3, 	4,	0,	&and,							&sp_zn},
+	{"AND",		0x21,		INDIRECTX, 	2, 	6,	0,	&and,							&sp_zn},
+	{"AND",		0x31,		INDIRECTY, 	2, 	6,	1,	&and,							&sp_zn},
+
+	{"ASL",		0x0a,		ACCUMULATOR,2,	2,	0,	&asl_accumulator,	&asl_sp},
+	{"ASL",		0x06,		ZEROPAGE,		2,	5,	0,	&asl,							&asl_sp},
+	{"ASL",		0x16,		ZEROPAGEX,	2,	6,	0,	&asl,							&asl_sp},
+	{"ASL",		0x0e,		ABSOLUTE,		3,	6,	0,	&asl,							&asl_sp},
+	{"ASL",		0x0e,		ABSOLUTEX,	3,	7,	0,	&asl,							&asl_sp},
+
+	{"BCC",		0x90,		RELATIVE,		2,	2,	1,	&bcc,							NULL},
+	{"BCS",		0xb0,		RELATIVE,		2,	2,	1,	&bcs,							NULL},
+	{"BEQ",		0xf0,		RELATIVE,		2,	2,	1,	&beq,							NULL},
+	{"BMI",		0x30,		RELATIVE,		2,	2,	1,	&bmi,							NULL},
+	{"BNE",		0xd0,		RELATIVE,		2,	2,	1,	&bne,							NULL},
+	{"BPL",		0x10,		RELATIVE,		2,	2,	1,	&bpl,							NULL},
+	{"BVC",		0x50,		RELATIVE,		2,	2,	1,	&bvc,							NULL},
+	{"BVS",		0x70,		RELATIVE,		2,	2,	1,	&bvs,							NULL},
+
+	{"BIT",		0x24,		ZEROPAGE,		2,	3,	0,	&bit,							NULL},
+	{"BIT",		0x2c,		ABSOLUTE,		3,	4,	0,	&bit,							NULL},
+
+	{"CLC",		0x18,		IMPLIED,		1,	2,	0,	&clc,							NULL},
+	{"CLD",		0xd8,		IMPLIED,		1,	2,	0,	&cld,							NULL},
+	{"CLI",		0x58,		IMPLIED,		1,	2,	0,	&cli,							NULL},
+	{"CLD",		0xb8,		IMPLIED,		1,	2,	0,	&clv,							NULL},
+
+
 };
 
 // global extern
@@ -221,7 +355,8 @@ static void handle_op(struct instruction op) {
 	uint16_t result = op.fn(op.mode, uarg);
 
 	// 6. set to registers
-	op.end(result);
+	if (op.end)
+		op.end(result);
 
 	// 7. increment pc
 	__cpu_reg.pc += op.size;
@@ -2476,18 +2611,16 @@ int cpu_exec(t_mem *memory, t_registers *reg)
 	res += brk_opcode(reg, memory, op);
 #endif
 	// res += adc_opcode(reg, memory, op);
-	res += and_opcode(reg, memory, op);
-	res += asl_opcode(reg, memory, op);
-	res += bcc_opcode(reg, memory, op);
-	res += bcs_opcode(reg, memory, op);
-	res += beq_opcode(reg, memory, op);
-	res += bit_opcode(reg, memory, op);
-	res += bmi_opcode(reg, memory, op);
-	res += bne_opcode(reg, memory, op);
-	res += bpl_opcode(reg, memory, op);
-	res += bvc_opcode(reg, memory, op);
-	res += bvs_opcode(reg, memory, op);
-	res += clr_opcode(reg, memory, op); // clear opcodes
+	// res += and_opcode(reg, memory, op);
+	// res += asl_opcode(reg, memory, op);
+	// res += bcc_opcode(reg, memory, op);
+	// res += bcs_opcode(reg, memory, op);
+	// res += bmi_opcode(reg, memory, op);
+	// res += bne_opcode(reg, memory, op);
+	// res += bpl_opcode(reg, memory, op);
+	// res += bvc_opcode(reg, memory, op);
+	// res += bvs_opcode(reg, memory, op);
+	// res += clr_opcode(reg, memory, op); // clear opcodes
 	res += set_opcode(reg, memory, op); // set opcodes
 	res += trs_opcode(reg, memory, op); // transfer opcodes
 	res += cmp_opcode(reg, memory, op);
