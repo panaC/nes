@@ -12,18 +12,29 @@
 int main(int argc, char **argv) {
   printf("hello nes\n");
 
-  bus_init_memory();
-  sdl_init();
-
-  // run(&memory[0], MEM_SIZE, 0, NULL);
-  // run_test(&memory[0]);
   // if (argc > 1) {
   //   parse(argv[1]);
   // } else 
   //  puts("no file to parse");
 
-  // sdl_init();
-  snake(&__memory[0]);
+  bus_init();
+  snake_init();
+  sdl_init(SNAKE_WIDTH, SNAKE_HEIGHT);
+  cpu_init();
+
+  SDL_Thread *thread;
+  thread = SDL_CreateThread(cpu_run, "CPUThread", (void *)&__pause);
+  if (!thread) {
+    log_error("CPUThread ERROR");
+    return 1;
+  }
+
+  snake();
+
+  if (thread) {
+    SDL_DetachThread(thread);
+    thread = NULL;
+  }
 
   sdl_quit();
   return 0;

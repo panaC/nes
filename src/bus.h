@@ -22,7 +22,7 @@ union u16 {
 typedef uint8_t *t_mem;
 typedef uint8_t (*readwritefn)(uint8_t value, uint32_t addr);
 
-void bus_init_memory(void);
+void bus_init(void);
 uint8_t readbus(uint32_t addr);
 union u16 readbus16(uint32_t addr);
 uint8_t readbus_pc();

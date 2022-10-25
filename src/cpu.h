@@ -42,6 +42,7 @@ typedef struct s_registers {
 
 } t_registers;
 
+void cpu_init();
 void irq(t_registers *reg, t_mem *memory);
 int cpu_run();
 int cpu_exec(t_mem *memory, t_registers *reg);

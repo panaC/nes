@@ -17,7 +17,7 @@ size_t readEventBusSize = 0;
 readwritefn writeFnEventBus[EVENT_BUS_FN_SIZE] = {NULL};
 size_t writeEventBusSize = 0;
 
-void bus_init_memory() {
+void bus_init() {
   uint8_t *rawmem = (uint8_t *)malloc(MEM_SIZE);
   bzero(rawmem, MEM_SIZE);
   for (int i = 0; i < MEM_SIZE; i++) {
@@ -50,7 +50,6 @@ readwritefn bus_write_on(readwritefn fn) {
 union u16 readbus16(uint32_t addr) {
 
   debug("READ16=0x%x", addr);
-  assert(addr <= 0x736); // snake 0x736 bytes used
 
   union u16 v = {.lsb = readbus(addr), .msb = readbus(addr + 1)};
   return v;
@@ -59,7 +58,6 @@ union u16 readbus16(uint32_t addr) {
 uint8_t readbus(uint32_t addr) {
 
   debug("READ=0x%x VALUE=%d/%d/0x%x", addr, *__memory[addr], (int8_t)*__memory[addr], *__memory[addr]);
-  assert(addr <= 0x737); // snake 0x736 bytes used // jump to 735 + READ16 736-737
 
   uint8_t value = *__memory[addr];
   for (int i = 0; i < readEventBusSize; i++) {

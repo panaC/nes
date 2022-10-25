@@ -26,8 +26,10 @@ t_registers __cpu_reg = {
 // attention car table de cycle pas possible pour les instructions avec page crossed cycle .. comment faire ?
 
 // https://www.pagetable.com/?p=410
-void init(t_registers *reg, t_mem *memory)
+void cpu_init()
 {
+	t_registers *reg = &__cpu_reg;
+	t_mem *memory = __memory; 
 
 	assert(MEM_SIZE == 64 * 1024);
 	reg->pc = readbus16(0xfffc).value;

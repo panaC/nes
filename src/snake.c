@@ -34,8 +34,63 @@ uint8_t rom[] = {
 
 #define START 0x600
 static int quit = 0;
-char __lastkeycode = 0;
+static char lastkeycode = 0;
+static uint32_t rawPixel[SNAKE_WIDTH * SNAKE_HEIGHT] = {0};
+
+// extern global var
 char __pause = 1; // pause at startup
+
+static void setPixelWithPitch(uint32_t pos, uint32_t color) {
+  uint32_t pixel;
+  if (pos < (SNAKE_WIDTH * SNAKE_HEIGHT) / (SNAKE_PITCH * SNAKE_PITCH)) {
+    for (int i = 0; i < SNAKE_PITCH; i++) {
+      for (int j = 0; j < SNAKE_PITCH; j++) {
+        pixel = (pos / (SNAKE_WIDTH / SNAKE_PITCH) * SNAKE_PITCH * SNAKE_WIDTH + i * SNAKE_WIDTH) + pos % (SNAKE_HEIGHT / SNAKE_PITCH) * SNAKE_PITCH + j;
+        rawPixel[pixel] = color;
+      }
+    }
+  }
+}
+
+static t_snake_action sdl_processEvent() {
+  SDL_Event event;
+  t_snake_action ret;
+
+  SDL_PollEvent(&event);
+  switch (event.type)
+  {
+  case SDL_QUIT:
+    debug("QUIT EVENT");
+    return QUIT_EVENT;
+    break;
+
+  case SDL_KEYDOWN:
+				switch (event.key.keysym.sym) {
+					case SDLK_LEFT:
+						return MOVE_LEFT;
+						break;
+					case SDLK_RIGHT:
+						return MOVE_RIGHT;
+						break;
+					case SDLK_DOWN:
+						return MOVE_DOWN;
+						break;
+					case SDLK_UP:
+						return MOVE_UP;
+						break;
+					case SDLK_RETURN:
+						return PAUSE;
+						break;
+				}
+				break;
+
+  default:
+    // debug("UNKNOWN EVENT %d", event.type);
+    return NO_EVENT;
+  }
+
+  return NO_EVENT;
+}
 
 uint8_t bus_read_fe_rand(uint8_t value, uint32_t addr) {
   if (addr == 0xfe) {
@@ -47,7 +102,7 @@ uint8_t bus_read_fe_rand(uint8_t value, uint32_t addr) {
 
 uint8_t bus_read_ff_rand(uint8_t value, uint32_t addr) {
   if (addr == 0xff) {
-    value = __lastkeycode;
+    value = lastkeycode;
     debug("BUS: last key %d", value);
   }
   return value;
@@ -56,10 +111,28 @@ uint8_t bus_read_ff_rand(uint8_t value, uint32_t addr) {
 uint8_t bus_write_2xx_screen(uint8_t value, uint32_t addr) {
   if (addr >= 0x200 && addr < 0x600) {
     // fill a rect at address to the screen
-    sdl_setPixelWithPitch(addr - 0x200, value ? 0xffffffff : 0);
+    setPixelWithPitch(addr - 0x200, value ? 0xffffffff : 0);
     debug("SET PIXEL X=%d Y=%d", (addr-0x200) % 32, (addr-0x200) / 32);
   }
   return value;
+}
+
+void snake_init() {
+
+  for(int i = 0; i < sizeof(rom); i++) {
+    __memory[START + i] = rom + i;
+  }
+
+  union u16 resetVector = {.value = START};
+
+  *__memory[0xfffc] = resetVector.lsb;
+  *__memory[0xfffd] = resetVector.msb;
+
+  hexdump(*(__memory + START), 320);
+
+  bus_write_on(&bus_write_2xx_screen);
+  bus_read_on(&bus_read_fe_rand);
+  bus_read_on(&bus_read_ff_rand);
 }
 
 void snake() {
@@ -71,25 +144,7 @@ void snake() {
   // 0x600 -> sizeof(rom) : rom
   // memory_size = 0x1000 : 16 * 256 : 4kB
 
-  for(int i = 0; i < sizeof(rom); i++) {
-    __memory[START + i] = rom + i;
-  }
-
-  __cpu_reg.pc = START;
-
-  hexdump(*(__memory + START), 320);
-
-  bus_write_on(&bus_write_2xx_screen);
-  bus_read_on(&bus_read_fe_rand);
-  bus_read_on(&bus_read_ff_rand);
-
   int quit = 0;
-  SDL_Thread *thread;
-
-  thread = SDL_CreateThread(cpu_run, "CPUThread", (void *)&__pause);
-  if (!thread) {
-    log_error("CPUThread ERROR");
-  }
 
   while (quit != -1)
   {
@@ -97,27 +152,22 @@ void snake() {
     switch (sdl_processEvent())
     {
     case QUIT_EVENT:
-      if (thread)
-      {
-        SDL_DetachThread(thread);
-        thread = NULL;
-      }
       quit = -1;
-
+      break;
     case MOVE_DOWN:
-      __lastkeycode = 0x73;
+      lastkeycode = 0x73;
       debug("MOVE DOWN");
       break;
     case MOVE_UP:
-      __lastkeycode = 0x77;
+      lastkeycode = 0x77;
       debug("MOVE UP");
       break;
     case MOVE_LEFT:
-      __lastkeycode = 0x61;
+      lastkeycode = 0x61;
       debug("MOVE LEFT");
       break;
     case MOVE_RIGHT:
-      __lastkeycode = 0x64;
+      lastkeycode = 0x64;
       debug("MOVE RIGHT");
       break;
     case PAUSE:
@@ -130,7 +180,7 @@ void snake() {
     }
 
     SDL_Delay(1000 / 60); // 60fps
-    sdl_showRendering();
+    sdl_showRendering(rawPixel, SNAKE_WIDTH);
   }
 
   hexdumpSnake(*(__memory + 0x200), 1024);
