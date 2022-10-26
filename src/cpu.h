@@ -73,7 +73,7 @@ struct instruction {
 };
 
 void cpu_init();
-void irq(t_registers *reg, t_mem *memory);
+void cpu_irq();
 int cpu_run();
 int cpu_exec(t_mem *memory, t_registers *reg);
 void run(t_mem *memory, size_t size, t_registers *reg);

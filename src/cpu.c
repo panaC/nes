@@ -91,33 +91,43 @@ uint32_t addressmode(enum e_addressMode mode, union u16 arg) {
 	return 0;
 }
 
+uint8_t readDataFromAddressmode(enum e_addressMode mode, union u16 arg) {
+	if (mode == IMMEDIATE) {
+		return arg.lsb;
+	}
+	return readbus(addressmode(mode, arg));
+}
+
 int16_t illegalInstruction() {
 	assert(0);
 
 	return 0;
 }
 
-void nop() {
+int16_t nop() {
 
 	// nop
+
+	return 0;
 }
 
-void sp_zn(int16_t result) {
+
+
+int16_t brk() {
+	// irq();
+	__cpu_reg.p.B = 1;
+
+	return 0;
+}
+
+void sp_zn(int16_t result)
+{
 	__cpu_reg.p.Z = !result;
 	__cpu_reg.p.N = !!(result & 0x80);
 }
 
-int16_t adc_immediate(enum e_addressMode mode, union u16 uarg) {
-	return (__cpu_reg.a += uarg.lsb + __cpu_reg.p.C, __cpu_reg.a);
-}
-
 int16_t adc(enum e_addressMode mode, union u16 uarg) {
-	return (__cpu_reg.a += readbus(addressmode(mode, uarg)) + __cpu_reg.p.C, __cpu_reg.a);
-}
-
-void adc_sp(int16_t result) {
-
-	sp_zn(result);
+	int16_t result = __cpu_reg.a += readDataFromAddressmode(mode, uarg) + __cpu_reg.p.C;
 
 	// http://www.6502.org/tutorials/vflag.html
 	// seems to be the right value : see in github nes emulation
@@ -130,30 +140,44 @@ void adc_sp(int16_t result) {
 
 	// http://www.6502.org/tutorials/vflag.html
 	__cpu_reg.p.V = result >= 0 ? (result & 0x100) >> 8 : !((result & 0x80) >> 7);
-}
 
-void asl_sp(int16_t result) {
-
-	sp_zn(result);
-	__cpu_reg.p.C = !!(result & 0x80); // Set to contents of old bit 7
-}
-
-int16_t and_immediate(enum e_addressMode mode, union u16 uarg) {
-	return (__cpu_reg.a &= uarg.lsb, __cpu_reg.a);
+	return result;
 }
 
 int16_t and(enum e_addressMode mode, union u16 uarg) {
-	return (__cpu_reg.a &= readbus(addressmode(mode, uarg)), __cpu_reg.a);
-}
-
-int16_t asl_accumulator(enum e_addressMode mode, union u16 uarg){
-	return (__cpu_reg.a <<= 1, __cpu_reg.a << 1);
+	return __cpu_reg.a &= readDataFromAddressmode(mode, uarg);
 }
 
 int16_t asl(enum e_addressMode mode, union u16 uarg) {
-	uint32_t addr = addressmode(mode, uarg);
-	uint16_t result = readbus(addr) << 1;
-	writebus(addr, result);
+	uint16_t result = 0;
+
+	if (mode == ACCUMULATOR) {
+		result = __cpu_reg.a << 1;
+	} else {
+		uint32_t addr = addressmode(mode, uarg);
+		result = readbus(addr) << 1;
+		writebus(addr, result);
+	}
+	__cpu_reg.a = result;
+	__cpu_reg.p.C = !!(result & 0x80); // Set to contents of old bit 7
+	return result;
+}
+
+int16_t lsr(enum e_addressMode mode, union u16 uarg) {
+	uint16_t result = 0;
+	uint8_t mem = 0;
+
+	if (mode == ACCUMULATOR) {
+		mem = __cpu_reg.a;
+		result = __cpu_reg.a >> 1;
+	} else {
+		uint32_t addr = addressmode(mode, uarg);
+		mem = readbus(addr);
+		result = mem >> 1;
+		writebus(addr, result);
+	}
+	__cpu_reg.a = result;
+	__cpu_reg.p.C = mem & 0x01; // Set to contents of old bit 0
 	return result;
 }
 
@@ -212,35 +236,267 @@ int16_t bit(enum e_addressMode mode, union u16 uarg) {
 	__cpu_reg.p.Z = !value;
 	__cpu_reg.p.V = !!(value & 0x40);
 	__cpu_reg.p.N = !!(value & 0x80);
+
+	return 0;
 }
 
 int16_t clc(enum e_addressMode mode, union u16 uarg) {
-	__cpu_reg.p.C = 0;
+	return __cpu_reg.p.C = 0;
 }
 
 int16_t cld(enum e_addressMode mode, union u16 uarg) {
-	__cpu_reg.p.D = 0;
+	return __cpu_reg.p.D = 0;
 }
 
 int16_t cli(enum e_addressMode mode, union u16 uarg) {
-	__cpu_reg.p.I = 0;
+	return __cpu_reg.p.I = 0;
 }
 
 int16_t clv(enum e_addressMode mode, union u16 uarg) {
-	__cpu_reg.p.V = 0;
+	return __cpu_reg.p.V = 0;
 }
 
-struct instruction tab[] = {
-	{"ADC", 	0x69, 	IMMEDIATE, 	2, 	2, 	0, 	&adc_immediate, 	&adc_sp},
-	{"ADC", 	0x65, 	ZEROPAGE, 	2, 	3, 	0, 	&adc, 						&adc_sp},
-	{"ADC", 	0x75, 	ZEROPAGEX, 	2, 	4, 	0, 	&adc, 						&adc_sp},
-	{"ADC", 	0x6d, 	ABSOLUTE, 	3, 	4, 	0, 	&adc, 						&adc_sp},
-	{"ADC", 	0x7d, 	ABSOLUTEX, 	3, 	4, 	1, 	&adc, 						&adc_sp},
-	{"ADC", 	0x79, 	ABSOLUTEY, 	3, 	4, 	0, 	&adc, 						&adc_sp},
-	{"ADC", 	0x61, 	INDIRECTX, 	2, 	6, 	0, 	&adc, 						&adc_sp},
-	{"ADC", 	0x71, 	INDIRECTY, 	2, 	5, 	1, 	&adc, 						&adc_sp},
+int16_t sbc(enum e_addressMode mode, union u16 uarg) {
+	int16_t result = __cpu_reg.a -= readDataFromAddressmode(mode, uarg) - (1 - __cpu_reg.p.C);
 
-	{"AND",		0x29,		IMMEDIATE, 	2, 	2,	0,	&and_immediate,		&sp_zn},
+	// http://www.6502.org/tutorials/vflag.html
+	__cpu_reg.p.C = !(!!(result & 0x100));
+	// As stated above, the second purpose of the carry flag
+	// is to indicate when the result of the
+	// addition or subtraction is outside the range 0 to 255, specifically:
+	// When the subtraction result is 0 to 255, the carry is set.
+	// When the subtraction result is less than 0, the carry is cleared.
+
+	// http://www.6502.org/tutorials/vflag.html
+	__cpu_reg.p.V = result >= 0 ? (result & 0x100) >> 8 : !((result & 0x80) >> 7);
+
+	return result;
+}
+
+int16_t sec(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.p.C = 1;
+}
+
+int16_t sed(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.p.D = 1;
+}
+
+int16_t sei(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.p.I = 1;
+}
+
+int16_t tax(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.x = __cpu_reg.a;
+}
+
+int16_t tay(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.y = __cpu_reg.a;
+}
+
+int16_t tsx(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.x = __cpu_reg.sp;
+}
+
+int16_t txa(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.a = __cpu_reg.x;
+}
+
+int16_t txs(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.sp = __cpu_reg.x;
+}
+
+int16_t tya(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.a = __cpu_reg.y;
+}
+
+int16_t cmp(enum e_addressMode mode, union u16 uarg) {
+	int16_t result = __cpu_reg.a - readDataFromAddressmode(mode, uarg);
+	__cpu_reg.p.C = !(!!(result & 0x80));
+	return result;
+}
+
+int16_t cpx(enum e_addressMode mode, union u16 uarg) {
+	int16_t result = __cpu_reg.x - readDataFromAddressmode(mode, uarg);
+	__cpu_reg.p.C = !(!!(result & 0x80));
+	return result;
+}
+
+int16_t cpy(enum e_addressMode mode, union u16 uarg) {
+	int16_t result = __cpu_reg.y - readDataFromAddressmode(mode, uarg);
+	__cpu_reg.p.C = !(!!(result & 0x80));
+	return result;
+}
+
+int16_t dec(enum e_addressMode mode, union u16 uarg) {
+	uint32_t addr = addressmode(mode, uarg);
+	uint8_t result = (int8_t)readbus(addr) - 1;
+	writebus(addr, result);
+	return result;
+}
+
+int16_t inc(enum e_addressMode mode, union u16 uarg) {
+	uint32_t addr = addressmode(mode, uarg);
+	uint8_t result = (int8_t)readbus(addr) + 1;
+	writebus(addr, result);
+	return result;
+}
+
+int16_t dex(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.x = (__cpu_reg.x - 1) & 0xff;
+}
+
+int16_t dey(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.y = (__cpu_reg.y - 1) & 0xff;
+}
+
+int16_t inx(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.x = (__cpu_reg.x + 1) & 0xff;
+}
+
+int16_t iny(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.y = (__cpu_reg.y + 1) & 0xff;
+}
+
+int16_t eor(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.a ^= (int8_t)readDataFromAddressmode(mode, uarg);
+}
+
+int16_t lda(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.a = readDataFromAddressmode(mode, uarg);
+}
+
+int16_t ldx(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.x = readDataFromAddressmode(mode, uarg);
+}
+
+int16_t ldy(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.y = readDataFromAddressmode(mode, uarg);
+}
+
+int16_t sta(enum e_addressMode mode, union u16 uarg) {
+	writebus(addressmode(mode, uarg), __cpu_reg.a);
+	return 0;
+}
+
+int16_t stx(enum e_addressMode mode, union u16 uarg) {
+	writebus(addressmode(mode, uarg), __cpu_reg.x);
+	return 0;
+}
+
+int16_t sty(enum e_addressMode mode, union u16 uarg) {
+	writebus(addressmode(mode, uarg), __cpu_reg.y);
+	return 0;
+}
+
+int16_t ora(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.a |= readDataFromAddressmode(mode, uarg);
+}
+
+int16_t rol(enum e_addressMode mode, union u16 uarg) {
+	uint8_t mem, oldbit = 0;
+	uint32_t addr = 0;
+	int16_t result = 0;
+
+	if (mode == ACCUMULATOR) {
+		oldbit = !!(__cpu_reg.a & 0x80);
+		__cpu_reg.a <<= 1;
+		__cpu_reg.a |= __cpu_reg.p.C;
+		__cpu_reg.p.C = oldbit;
+		result = __cpu_reg.a;
+	} else {
+		addr = addressmode(mode, uarg);
+		mem = readbus(addr);
+		oldbit = !!(mem & 0x80);
+		mem <<= 1;
+		mem |= __cpu_reg.p.C;
+		writebus(addr, mem);
+		__cpu_reg.p.C = oldbit;
+		result = mem;
+	}
+
+	return result;
+}
+
+int16_t ror(enum e_addressMode mode, union u16 uarg) {
+	uint8_t mem, oldbit = 0;
+	uint32_t addr = 0;
+	int16_t result = 0;
+
+	if (mode == ACCUMULATOR) {
+		oldbit = __cpu_reg.a & 0x01;
+		__cpu_reg.a >>= 1;
+		__cpu_reg.a |= (__cpu_reg.p.C << 7);
+		__cpu_reg.p.C = oldbit;
+		result = __cpu_reg.a;
+	} else {
+		addr = addressmode(mode, uarg);
+		mem = readbus(addr);
+		oldbit = mem & 0x01;
+		mem >>= 1;
+		mem |= (__cpu_reg.p.C << 7);
+		writebus(addr, mem);
+		__cpu_reg.p.C = oldbit;
+		result = mem;
+	}
+
+	return result;
+}
+
+int16_t pha(enum e_addressMode mode, union u16 uarg) {
+	writebus(0x01ff - __cpu_reg.sp--, __cpu_reg.a);
+	return 0;
+}
+
+int16_t php(enum e_addressMode mode, union u16 uarg) {
+	writebus(0x01ff - __cpu_reg.sp--, __cpu_reg.p.value);
+	return 0;
+}
+
+int16_t pla(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.a = readbus(0x01ff - __cpu_reg.sp++);
+}
+
+int16_t plp(enum e_addressMode mode, union u16 uarg) {
+	return __cpu_reg.p.value = readbus(0x01ff - __cpu_reg.sp++);
+}
+
+int16_t jmp_absolute(enum e_addressMode mode, union u16 uarg) {
+	__cpu_reg.pc = uarg.value;
+	return 0;
+}
+
+int16_t jsr(enum e_addressMode mode, union u16 uarg) {
+	union u16 pc = {.value = __cpu_reg.pc};
+
+	writebus(0x01ff - __cpu_reg.sp, pc.msb);
+	__cpu_reg.sp--;
+	writebus(0x01ff - __cpu_reg.sp, pc.lsb);
+	__cpu_reg.sp--;
+	__cpu_reg.pc = uarg.value;
+	return 0;
+}
+
+int16_t rts(enum e_addressMode mode, union u16 uarg) {
+	union u16 pc = {0};
+
+	pc.lsb = readbus(0x01ff - ++__cpu_reg.sp);
+	pc.msb = readbus(0x01ff - ++__cpu_reg.sp);
+	__cpu_reg.pc = pc.value;
+	return 0;
+}
+
+
+struct instruction tab[] = {
+	{"ADC", 	0x69, 	IMMEDIATE, 	2, 	2, 	0, 	&adc,						 	&sp_zn},
+	{"ADC", 	0x65, 	ZEROPAGE, 	2, 	3, 	0, 	&adc, 						&sp_zn},
+	{"ADC", 	0x75, 	ZEROPAGEX, 	2, 	4, 	0, 	&adc, 						&sp_zn},
+	{"ADC", 	0x6d, 	ABSOLUTE, 	3, 	4, 	0, 	&adc, 						&sp_zn},
+	{"ADC", 	0x7d, 	ABSOLUTEX, 	3, 	4, 	1, 	&adc, 						&sp_zn},
+	{"ADC", 	0x79, 	ABSOLUTEY, 	3, 	4, 	0, 	&adc, 						&sp_zn},
+	{"ADC", 	0x61, 	INDIRECTX, 	2, 	6, 	0, 	&adc, 						&sp_zn},
+	{"ADC", 	0x71, 	INDIRECTY, 	2, 	5, 	1, 	&adc, 						&sp_zn},
+
+	{"AND",		0x29,		IMMEDIATE, 	2, 	2,	0,	&and,							&sp_zn},
 	{"AND",		0x25,		ZEROPAGE, 	2, 	3,	0,	&and,							&sp_zn},
 	{"AND",		0x35,		ZEROPAGEX, 	2, 	4,	0,	&and,							&sp_zn},
 	{"AND",		0x2d,		ABSOLUTE, 	3, 	4,	0,	&and,							&sp_zn},
@@ -249,11 +505,17 @@ struct instruction tab[] = {
 	{"AND",		0x21,		INDIRECTX, 	2, 	6,	0,	&and,							&sp_zn},
 	{"AND",		0x31,		INDIRECTY, 	2, 	6,	1,	&and,							&sp_zn},
 
-	{"ASL",		0x0a,		ACCUMULATOR,2,	2,	0,	&asl_accumulator,	&asl_sp},
-	{"ASL",		0x06,		ZEROPAGE,		2,	5,	0,	&asl,							&asl_sp},
-	{"ASL",		0x16,		ZEROPAGEX,	2,	6,	0,	&asl,							&asl_sp},
-	{"ASL",		0x0e,		ABSOLUTE,		3,	6,	0,	&asl,							&asl_sp},
-	{"ASL",		0x0e,		ABSOLUTEX,	3,	7,	0,	&asl,							&asl_sp},
+	{"ASL",		0x0a,		ACCUMULATOR,1,	2,	0,	&asl,							&sp_zn},
+	{"ASL",		0x06,		ZEROPAGE,		2,	5,	0,	&asl,							&sp_zn},
+	{"ASL",		0x16,		ZEROPAGEX,	2,	6,	0,	&asl,							&sp_zn},
+	{"ASL",		0x0e,		ABSOLUTE,		3,	6,	0,	&asl,							&sp_zn},
+	{"ASL",		0x0e,		ABSOLUTEX,	3,	7,	0,	&asl,							&sp_zn},
+	
+	{"LSR",		0x4a,		ACCUMULATOR,1,	2,	0,	&lsr,							&sp_zn},
+	{"LSR",		0x46,		ZEROPAGE,		2,	5,	0,	&lsr,							&sp_zn},
+	{"LSR",		0x56,		ZEROPAGEX,	2,	6,	0,	&lsr,							&sp_zn},
+	{"LSR",		0x4e,		ABSOLUTE,		3,	6,	0,	&lsr,							&sp_zn},
+	{"LSR",		0x5e,		ABSOLUTEX,	3,	7,	0,	&lsr,							&sp_zn},
 
 	{"BCC",		0x90,		RELATIVE,		2,	2,	1,	&bcc,							NULL},
 	{"BCS",		0xb0,		RELATIVE,		2,	2,	1,	&bcs,							NULL},
@@ -272,6 +534,138 @@ struct instruction tab[] = {
 	{"CLI",		0x58,		IMPLIED,		1,	2,	0,	&cli,							NULL},
 	{"CLD",		0xb8,		IMPLIED,		1,	2,	0,	&clv,							NULL},
 
+	{"SBC",		0xe9,		IMMEDIATE,	2,	2,	0,	&sbc,							&sp_zn},
+	{"SBC",		0xe5,		ZEROPAGE,		2,	3,	0,	&sbc,							&sp_zn},
+	{"SBC",		0xf5,		ZEROPAGEX,	2,	4,	0,	&sbc,							&sp_zn},
+	{"SBC",		0xed,		ABSOLUTE,		3,	4,	0,	&sbc,							&sp_zn},
+	{"SBC",		0xfd,		ABSOLUTEX,	3,	4,	1,	&sbc,							&sp_zn},
+	{"SBC",		0xf9,		ABSOLUTEY,	3,	4,	0,	&sbc,							&sp_zn},
+	{"SBC",		0xe1,		INDIRECTX,	2,	6,	0,	&sbc,							&sp_zn},
+	{"SBC",		0xf1,		INDIRECTY,	2,	6,	1,	&sbc,							&sp_zn},
+
+	{"SEC",		0x38,		IMPLIED,		1,	2,	0,	&sec,							NULL},
+	{"SED",		0xf8,		IMPLIED,		1,	2,	0,	&sed,							NULL},
+	{"SEI",		0x78,		IMPLIED,		1,	2,	0,	&sei,							NULL},
+
+	{"TAX",		0xaa,		IMPLIED,		1,	2,	0,	&tax,							&sp_zn},
+	{"TAY",		0xa8,		IMPLIED,		1,	2,	0,	&tay,							&sp_zn},
+	{"TSX",		0xba,		IMPLIED,		1,	2,	0,	&tsx,							&sp_zn},
+	{"TXA",		0x8a,		IMPLIED,		1,	2,	0,	&txa,							&sp_zn},
+	{"TXS",		0x9a,		IMPLIED,		1,	2,	0,	&txs,							NULL},
+	{"TYA",		0x98,		IMPLIED,		1,	2,	0,	&tya,							&sp_zn},
+
+	{"CMP",		0xc9,		IMMEDIATE,	2,	2,	0,	&cmp,							&sp_zn},
+	{"CMP",		0xc5,		ZEROPAGE,		2,	3,	0,	&cmp,							&sp_zn},
+	{"CMP",		0xd5,		ZEROPAGEX,	2,	4,	0,	&cmp,							&sp_zn},
+	{"CMP",		0xcd,		ABSOLUTE,		3,	4,	0,	&cmp,							&sp_zn},
+	{"CMP",		0xdd,		ABSOLUTEX,	3,	4,	1,	&cmp,							&sp_zn},
+	{"CMP",		0xd9,		ABSOLUTEY,	3,	4,	0,	&cmp,							&sp_zn},
+	{"CMP",		0xc1,		INDIRECTX,	2,	6,	0,	&cmp,							&sp_zn},
+	{"CMP",		0xd1,		INDIRECTY,	2,	5,	1,	&cmp,							&sp_zn},
+
+	{"CPX",		0xe1,		IMMEDIATE,	2,	2,	0,	&cpx,							&sp_zn},
+	{"CPX",		0xe4,		ZEROPAGE,		2,	3,	0,	&cpx,							&sp_zn},
+	{"CPX",		0xec,		ABSOLUTE,		2,	4,	0,	&cpx,							&sp_zn},
+
+	{"CPY",		0xc0,		IMMEDIATE,	2,	2,	0,	&cpy,							&sp_zn},
+	{"CPY",		0xc4,		ZEROPAGE,		2,	3,	0,	&cpy,							&sp_zn},
+	{"CPY",		0xcc,		ABSOLUTE,		2,	4,	0,	&cpy,							&sp_zn},
+
+	{"DEC",		0xc6,		ZEROPAGE,		2,	5,	0,	&dec,							&sp_zn},
+	{"DEC",		0xd6,		ZEROPAGEX,	2,	6,	0,	&dec,							&sp_zn},
+	{"DEC",		0xce,		ABSOLUTE,		3,	6,	0,	&dec,							&sp_zn},
+	{"DEC",		0xde,		ABSOLUTEX,	3,	7,	0,	&dec,							&sp_zn},
+	
+	{"INC",		0xe6,		ZEROPAGE,		2,	5,	0,	&inc,							&sp_zn},
+	{"INC",		0xd6,		ZEROPAGEX,	2,	6,	0,	&inc,							&sp_zn},
+	{"INC",		0xee,		ABSOLUTE,		3,	6,	0,	&inc,							&sp_zn},
+	{"INC",		0xfe,		ABSOLUTEX,	3,	7,	0,	&inc,							&sp_zn},
+
+	{"DEX",		0xca,		IMPLIED,		1,	2,	0,	&dex,							&sp_zn},
+	{"DEY",		0x88,		IMPLIED,		1,	2,	0,	&dey,							&sp_zn},
+	{"INX",		0xe8,		IMPLIED,		1,	2,	0,	&inx,							&sp_zn},
+	{"INY",		0xc8,		IMPLIED,		1,	2,	0,	&iny,							&sp_zn},
+
+	{"EOR",		0x49,		IMMEDIATE,	2,	2,	0,	&eor,							&sp_zn},
+	{"EOR",		0x45,		ZEROPAGE,		2,	3,	0,	&eor,							&sp_zn},
+	{"EOR",		0x55,		ZEROPAGEX,	2,	4,	0,	&eor,							&sp_zn},
+	{"EOR",		0x4d,		ABSOLUTE,		3,	4,	0,	&eor,							&sp_zn},
+	{"EOR",		0x5d,		ABSOLUTEX,	3,	4,	1,	&eor,							&sp_zn},
+	{"EOR",		0x59,		ABSOLUTEY,	3,	4,	0,	&eor,							&sp_zn},
+	{"EOR",		0x41,		INDIRECTX,	2,	6,	0,	&eor,							&sp_zn},
+	{"EOR",		0x51,		INDIRECTY,	2,	6,	1,	&eor,							&sp_zn},
+	
+	{"LDA",		0xa9,		IMMEDIATE,	2,	2,	0,	&lda,							&sp_zn},
+	{"LDA",		0xa5,		ZEROPAGE,		2,	3,	0,	&lda,							&sp_zn},
+	{"LDA",		0xb5,		ZEROPAGEX,	2,	4,	0,	&lda,							&sp_zn},
+	{"LDA",		0xad,		ABSOLUTE,		3,	4,	0,	&lda,							&sp_zn},
+	{"LDA",		0xbd,		ABSOLUTEX,	3,	4,	1,	&lda,							&sp_zn},
+	{"LDA",		0xb9,		ABSOLUTEY,	3,	4,	0,	&lda,							&sp_zn},
+	{"LDA",		0xa1,		INDIRECTX,	2,	6,	0,	&lda,							&sp_zn},
+	{"LDA",		0xb1,		INDIRECTY,	2,	6,	1,	&lda,							&sp_zn},
+	
+	{"LDX",		0xa2,		IMMEDIATE,	2,	2,	0,	&ldx,							&sp_zn},
+	{"LDX",		0xa6,		ZEROPAGE,		2,	3,	0,	&ldx,							&sp_zn},
+	{"LDX",		0xb6,		ZEROPAGEY,	2,	4,	0,	&ldx,							&sp_zn},
+	{"LDX",		0xae,		ABSOLUTE,		3,	4,	0,	&ldx,							&sp_zn},
+	{"LDX",		0xbe,		ABSOLUTEY,	3,	4,	1,	&ldx,							&sp_zn},
+	
+	{"LDY",		0xa0,		IMMEDIATE,	2,	2,	0,	&ldy,							&sp_zn},
+	{"LDY",		0xa4,		ZEROPAGE,		2,	3,	0,	&ldy,							&sp_zn},
+	{"LDY",		0xb4,		ZEROPAGEX,	2,	4,	0,	&ldy,							&sp_zn},
+	{"LDY",		0xac,		ABSOLUTE,		3,	4,	0,	&ldy,							&sp_zn},
+	{"LDY",		0xbc,		ABSOLUTEX,	3,	4,	1,	&ldy,							&sp_zn},
+	
+	{"STA",		0x85,		ZEROPAGE,		2,	3,	0,	&sta,							NULL},
+	{"STA",		0x95,		ZEROPAGEX,	2,	4,	0,	&sta,							NULL},
+	{"STA",		0x8d,		ABSOLUTE,		3,	4,	0,	&sta,							NULL},
+	{"STA",		0x9d,		ABSOLUTEX,	3,	4,	1,	&sta,							NULL},
+	{"STA",		0x99,		ABSOLUTEY,	3,	4,	0,	&sta,							NULL},
+	{"STA",		0x81,		INDIRECTX,	2,	6,	0,	&sta,							NULL},
+	{"STA",		0x91,		INDIRECTY,	2,	6,	1,	&sta,							NULL},
+
+	{"STX",		0x86,		ZEROPAGE,		2,	3,	0,	&stx,							NULL},
+	{"STX",		0x96,		ZEROPAGEX,	2,	4,	0,	&stx,							NULL},
+	{"STX",		0x8e,		ABSOLUTE,		3,	4,	0,	&stx,							NULL},
+	
+	{"STY",		0x84,		ZEROPAGE,		2,	3,	0,	&sty,							NULL},
+	{"STY",		0x94,		ZEROPAGEX,	2,	4,	0,	&sty,							NULL},
+	{"STY",		0x8c,		ABSOLUTE,		3,	4,	0,	&sty,							NULL},
+	
+	{"ORA",		0x09,		IMMEDIATE, 	2, 	2,	0,	&ora,							&sp_zn},
+	{"ORA",		0x05,		ZEROPAGE, 	2, 	3,	0,	&ora,							&sp_zn},
+	{"ORA",		0x15,		ZEROPAGEX, 	2, 	4,	0,	&ora,							&sp_zn},
+	{"ORA",		0x0d,		ABSOLUTE, 	3, 	4,	0,	&ora,							&sp_zn},
+	{"ORA",		0x1d,		ABSOLUTEX, 	3, 	4,	1,	&ora,							&sp_zn},
+	{"ORA",		0x19,		ABSOLUTEY, 	3, 	4,	0,	&ora,							&sp_zn},
+	{"ORA",		0x01,		INDIRECTX, 	2, 	6,	0,	&ora,							&sp_zn},
+	{"ORA",		0x11,		INDIRECTY, 	2, 	6,	1,	&ora,							&sp_zn},
+	
+	{"ROR",		0x6a,		ACCUMULATOR,1,	2,	0,	&ror,							&sp_zn},
+	{"ROR",		0x66,		ZEROPAGE,		2,	5,	0,	&ror,							&sp_zn},
+	{"ROR",		0x76,		ZEROPAGEX,	2,	6,	0,	&ror,							&sp_zn},
+	{"ROR",		0x6e,		ABSOLUTE,		3,	6,	0,	&ror,							&sp_zn},
+	{"ROR",		0x7e,		ABSOLUTEX,	3,	7,	0,	&ror,							&sp_zn},
+	
+	{"ROL",		0x2a,		ACCUMULATOR,1,	2,	0,	&rol,							&sp_zn},
+	{"ROL",		0x26,		ZEROPAGE,		2,	5,	0,	&rol,							&sp_zn},
+	{"ROL",		0x36,		ZEROPAGEX,	2,	6,	0,	&rol,							&sp_zn},
+	{"ROL",		0x2e,		ABSOLUTE,		3,	6,	0,	&rol,							&sp_zn},
+	{"ROL",		0x3e,		ABSOLUTEX,	3,	7,	0,	&rol,							&sp_zn},
+
+	{"PHA",		0x48,		IMPLIED,		1,	3,	0,	&pha,							NULL},
+	{"PHP",		0x08,		IMPLIED,		1,	3,	0,	&php,							NULL},
+	{"PLA",		0x68,		IMPLIED,		1,	3,	0,	&pla,							&sp_zn},
+	{"PLP",		0x28,		IMPLIED,		1,	3,	0,	&plp,							NULL},
+
+	{"JMP",		0x4c,		ABSOLUTE,		0,	3,	0,	&jmp_absolute,		NULL},
+	{"JMP",		0x6c,		INDIRECT,		3,	5,	0,	&illegalInstruction,NULL}, // TODO
+
+	{"JSR",		0x20,		ABSOLUTE,		3,	6,	0,	&jsr,							NULL},
+	{"RTS",		0x60,		IMPLIED,		1,	6,	0,	&rts,							NULL},
+
+	{"NOP",		0xea,		IMPLIED,		1,	2,	0,	&nop,							NULL},
+	{"BRK",		0x00,		IMPLIED,		1,	7,	0,	&brk,							NULL},
 
 };
 
@@ -351,15 +745,15 @@ static void handle_op(struct instruction op) {
 	// 4. debug
 	debug_opcode(op.mode, op.str, op.code, uarg);
 
-	// 5. algo
+	// 5. increment pc
+	__cpu_reg.pc += op.size;
+
+	// 6. algo
 	uint16_t result = op.fn(op.mode, uarg);
 
-	// 6. set to registers
+	// 7. set to registers Z & N
 	if (op.end)
 		op.end(result);
-
-	// 7. increment pc
-	__cpu_reg.pc += op.size;
 
 }
 
@@ -367,7 +761,7 @@ static void handle_op(struct instruction op) {
 void cpu_init()
 {
 	for (int i = 0; i < 0xff; i++) {
-		_op[i] = (struct instruction){"", 0x00, IMPLIED, 1, 1, 0, &illegalInstruction, &nop};
+		_op[i] = (struct instruction){"", 0x00, IMPLIED, 1, 1, 0, &illegalInstruction, NULL};
 	}
 	for (int i = 0; i < (sizeof(tab)/sizeof(struct instruction)); i++) {
 		_op[tab[i].code] = tab[i];
@@ -385,6 +779,18 @@ void cpu_init()
 	*memory[0x4015] = 0;
 	bzero(memory[0x4000], 16);
 	bzero(memory[0x4010], 4);
+}
+
+void cpu_irq()
+{
+	union u16 pc = {.value = __cpu_reg.pc};
+	pc.value = __cpu_reg.pc += 2;
+	writebus(0x01ff - __cpu_reg.sp--, pc.msb);
+	writebus(0x01ff - __cpu_reg.sp--, pc.lsb);
+	writebus(0x01ff - __cpu_reg.sp--, __cpu_reg.p.value);
+	union u16 brk = readbus16(0xfffe);
+	__cpu_reg.pc = brk.value;
+	__cpu_reg.p.B = 0; // clear b flags
 }
 
 
@@ -1939,10 +2345,8 @@ int ldy_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 	return 1;
 }
 
-int lsr_opcode(t_registers *reg, t_mem *memory, uint8_t op)
-{
+int lsr_opcode(t_registers *reg, t_mem *memory, uint8_t op) {
 	char *str = "LSR";
-
 	uint16_t result;
 	uint32_t addr;
 	uint8_t arg = 0;
@@ -2540,19 +2944,19 @@ int psp_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 	return 1;
 }
 
-int brk_opcode(t_registers *reg, t_mem *memory, uint8_t op)
-{
+// int brk_opcode(t_registers *reg, t_mem *memory, uint8_t op)
+// {
 
-	if (op == 0)
-	{
-		debug_opcode_implied("BRK", op);
-		irq(reg, memory);
-		reg->p.B = 1;
+// 	if (op == 0)
+// 	{
+// 		debug_opcode_implied("BRK", op);
+// 		irq(reg, memory);
+// 		reg->p.B = 1;
 
-		return 1;
-	}
-	return 0;
-}
+// 		return 1;
+// 	}
+// 	return 0;
+// }
 
 int nop_opcode(t_registers *reg, t_mem *memory, uint8_t op)
 {
@@ -2573,33 +2977,12 @@ void reset(t_registers *reg, t_mem *memory)
 	// TODO
 }
 
-void irq(t_registers *reg, t_mem *memory)
-{
-	union u16 pc = {.value = reg->pc};
-	pc.value = reg->pc += 2;
-	*memory[0x01ff - reg->sp] = pc.msb;
-	reg->sp--;
-	*memory[0x01ff - reg->sp] = pc.lsb;
-	reg->sp--;
-	*memory[0x01ff - reg->sp] = reg->p.value;
-	reg->sp--;
-	union u16 brk = {.lsb = *memory[0xfffe], .msb = *memory[0xffff]};
-	reg->pc = brk.value;
-	reg->p.B = 0; // clear b flags
-
-	cycle += 7;
-}
-
 int cpu_exec(t_mem *memory, t_registers *reg)
 {
 
 	int res = 0;
 	uint8_t op = readbus(reg->pc);
 
-	if (strcmp(_op[op].str, "") != 0) {
-		handle_op(_op[op]);
-		res = 1;
-	}
 #ifdef DEBUG_CPU
 	if (op == 0)
 	{
@@ -2607,9 +2990,12 @@ int cpu_exec(t_mem *memory, t_registers *reg)
 		debug("DEBUG_CPU BREAK");
 		return -1;
 	}
-#else
-	res += brk_opcode(reg, memory, op);
 #endif
+
+	if (strcmp(_op[op].str, "") != 0) {
+		handle_op(_op[op]);
+		res = 1;
+	}
 	// res += adc_opcode(reg, memory, op);
 	// res += and_opcode(reg, memory, op);
 	// res += asl_opcode(reg, memory, op);
@@ -2621,34 +3007,34 @@ int cpu_exec(t_mem *memory, t_registers *reg)
 	// res += bvc_opcode(reg, memory, op);
 	// res += bvs_opcode(reg, memory, op);
 	// res += clr_opcode(reg, memory, op); // clear opcodes
-	res += set_opcode(reg, memory, op); // set opcodes
-	res += trs_opcode(reg, memory, op); // transfer opcodes
-	res += cmp_opcode(reg, memory, op);
-	res += cpx_opcode(reg, memory, op);
-	res += cpy_opcode(reg, memory, op);
-	res += dec_opcode(reg, memory, op);
-	res += inc_opcode(reg, memory, op);
-	res += dex_opcode(reg, memory, op);
-	res += dey_opcode(reg, memory, op);
-	res += inx_opcode(reg, memory, op);
-	res += iny_opcode(reg, memory, op);
-	res += eor_opcode(reg, memory, op);
-	res += jmp_opcode(reg, memory, op);
-	res += jsr_opcode(reg, memory, op);
-	res += lda_opcode(reg, memory, op);
-	res += ldx_opcode(reg, memory, op);
-	res += ldy_opcode(reg, memory, op);
-	res += lsr_opcode(reg, memory, op);
-	res += ora_opcode(reg, memory, op);
-	res += sta_opcode(reg, memory, op);
-	res += stx_opcode(reg, memory, op);
-	res += sty_opcode(reg, memory, op);
-	res += rol_opcode(reg, memory, op);
-	res += ror_opcode(reg, memory, op);
-	res += rts_opcode(reg, memory, op);
-	res += psp_opcode(reg, memory, op);
-	res += sbc_opcode(reg, memory, op);
-	res += nop_opcode(reg, memory, op);
+	// res += set_opcode(reg, memory, op); // set opcodes
+	// res += trs_opcode(reg, memory, op); // transfer opcodes
+	// res += cmp_opcode(reg, memory, op);
+	// res += cpx_opcode(reg, memory, op);
+	// res += cpy_opcode(reg, memory, op);
+	// res += dec_opcode(reg, memory, op);
+	// res += inc_opcode(reg, memory, op);
+	// res += dex_opcode(reg, memory, op);
+	// res += dey_opcode(reg, memory, op);
+	// res += inx_opcode(reg, memory, op);
+	// res += iny_opcode(reg, memory, op);
+	// res += eor_opcode(reg, memory, op);
+	// res += jmp_opcode(reg, memory, op);
+	// res += jsr_opcode(reg, memory, op);
+	// res += lda_opcode(reg, memory, op);
+	// res += ldx_opcode(reg, memory, op);
+	// res += ldy_opcode(reg, memory, op);
+	// res += lsr_opcode(reg, memory, op);
+	// res += ora_opcode(reg, memory, op);
+	// res += sta_opcode(reg, memory, op);
+	// res += stx_opcode(reg, memory, op);
+	// res += sty_opcode(reg, memory, op);
+	// res += rol_opcode(reg, memory, op);
+	// res += ror_opcode(reg, memory, op);
+	// res += rts_opcode(reg, memory, op);
+	// res += psp_opcod(reg, memory, op);
+	// res += sbc_opcode(reg, memory, op);
+	// res += nop_opcode(reg, memory, op);
 	assert(res < 2);
 	if (res)
 	{

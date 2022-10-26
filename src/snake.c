@@ -128,7 +128,7 @@ void snake_init() {
   *__memory[0xfffc] = resetVector.lsb;
   *__memory[0xfffd] = resetVector.msb;
 
-  hexdump(*(__memory + START), 320);
+  // hexdump(*(__memory + START), 320);
 
   bus_write_on(&bus_write_2xx_screen);
   bus_read_on(&bus_read_fe_rand);
@@ -183,6 +183,6 @@ void snake() {
     sdl_showRendering(rawPixel, SNAKE_WIDTH);
   }
 
-  hexdumpSnake(*(__memory + 0x200), 1024);
+  // hexdumpSnake(*(__memory + 0x200), 1024);
 
 }
