@@ -1,7 +1,7 @@
 
 if [[ `uname` -eq 'Darwin' ]]; then
 
-  gcc -DDEBUG_CPU -DLOG_USE_COLOR -DLOG_LEVEL="LOG_ERROR | LOG_DEBUG" -DCPU_FREQ="(10 * 1000)" -I/usr/local/include src/main.c src/cpu.c src/test.c src/utils.c src/debug.c src/parser.c src/sdl.c src/snake.c src/log.c -lSDL2-2.0.0 -o nes && ./nes $@
+  gcc -DDEBUG_CPU -DLOG_USE_COLOR -DLOG_LEVEL="LOG_ERROR | LOG_DEBUG | LOG_PARSER" -DCPU_FREQ="(10 * 1000)" -I/usr/local/include src/main.c src/cpu.c src/test.c src/utils.c src/debug.c src/parser.c src/sdl.c src/snake.c src/log.c src/nes.c -lSDL2-2.0.0 -o nes && ./nes $@
 
 
 else

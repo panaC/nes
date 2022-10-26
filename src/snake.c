@@ -5,6 +5,7 @@
 #include "sdl.h"
 #include "debug.h"
 #include "cpu.h"
+#include "sdl.h"
 
 #define debug(...) log_x(LOG_DEBUG, __VA_ARGS__)
 
@@ -149,6 +150,17 @@ void snake() {
   // 0x600 -> sizeof(rom) : rom
   // memory_size = 0x1000 : 16 * 256 : 4kB
 
+  SDL_Thread *thread;
+  thread = SDL_CreateThread(cpu_run, "CPUThread", (void *)&__pause);
+  if (!thread) {
+    log_error("CPUThread ERROR");
+    return ;
+  }
+
+  sdl_init(SNAKE_WIDTH, SNAKE_HEIGHT);
+  snake_init();
+  cpu_init();
+
   int quit = 0;
 
   while (quit != -1)
@@ -189,5 +201,12 @@ void snake() {
   }
 
   // hexdumpSnake(*(__cpu_memory + 0x200), 1024);
+
+  if (thread) {
+    SDL_DetachThread(thread);
+    thread = NULL;
+  }
+
+  sdl_quit();
 
 }

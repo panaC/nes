@@ -26,7 +26,7 @@
 struct s_ines {
 
   int8_t magic[4];
-  uint8_t size_pgrrom; // Size of PRG ROM in 16 KB units
+  uint8_t size_prgrom; // Size of PRG ROM in 16 KB units
   uint8_t size_chrrom; // Size of CHR ROM in 8 KB units (Value 0 means the board uses CHR RAM)
   union flag6 {
     uint8_t value;
@@ -80,8 +80,16 @@ struct s_ines {
 // Older versions of the iNES emulator ignored bytes 7-15, and several ROM management tools wrote messages in there. Commonly, these will be filled with "DiskDude!", which results in 64 being added to the mapper number.
 // TODO A general rule of thumb: if the last 4 bytes are not all zero, and the header is not marked for NES 2.0 format, an emulator should either mask off the upper 4 bits of the mapper number or simply refuse to load the ROM.
 
+struct s_ines_parsed {
+  uint8_t *ptr;
+  uint64_t size;
+  struct s_ines *ines;
+  uint8_t *trainer;
+  uint8_t *prgrom;
+  uint8_t *chrrom;
+};
 
-void parse(char* filepath);
+struct s_ines_parsed* parse(char* filepath);
 
 
 

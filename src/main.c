@@ -7,35 +7,24 @@
 #include "parser.h"
 #include "sdl.h"
 #include "snake.h"
+#include "nes.h"
 
 int main(int argc, char **argv) {
   printf("hello nes\n");
 
+  struct s_ines_parsed* ines = NULL;
   if (argc > 1) {
-    parse(argv[1]);
+    ines = parse(argv[1]);
+    if (!ines) return 1;
   } else {
    puts("no file to parse");
+   return 2;
   }
 
-  snake_init();
-  sdl_init(SNAKE_WIDTH, SNAKE_HEIGHT);
-  cpu_init();
+  // snake();
+  nes(*ines);
+  free(ines);
 
-  SDL_Thread *thread;
-  thread = SDL_CreateThread(cpu_run, "CPUThread", (void *)&__pause);
-  if (!thread) {
-    log_error("CPUThread ERROR");
-    return 1;
-  }
-
-  snake();
-
-  if (thread) {
-    SDL_DetachThread(thread);
-    thread = NULL;
-  }
-
-  sdl_quit();
   return 0;
 }
 
