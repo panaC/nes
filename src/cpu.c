@@ -799,7 +799,6 @@ void reset(t_registers *reg, t_mem *memory)
 int cpu_exec(t_mem *memory, t_registers *reg)
 {
 
-	int res = 0;
 	uint8_t op = readbus(reg->pc);
 
 #ifdef DEBUG_CPU
@@ -811,10 +810,7 @@ int cpu_exec(t_mem *memory, t_registers *reg)
 	}
 #endif
 
-	if (strcmp(_op[op].str, "") != 0) {
-		handle_op(_op[op]);
-		res = 1;
-	}
+	handle_op(_op[op]);
 
 	// debug("cycle=%d", cycle);
 	print_register(&__cpu_reg);
