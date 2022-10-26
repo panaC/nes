@@ -5,7 +5,6 @@
 #include "sdl.h"
 #include "debug.h"
 #include "cpu.h"
-#include "bus.h"
 
 #define debug(...) log_x(LOG_DEBUG, __VA_ARGS__)
 
@@ -119,20 +118,26 @@ uint8_t bus_write_2xx_screen(uint8_t value, uint32_t addr) {
 
 void snake_init() {
 
+  uint8_t *rawmem = (uint8_t *)malloc(MEM_SIZE);
+  bzero(rawmem, MEM_SIZE);
+  for (int i = 0; i < MEM_SIZE; i++) {
+    __cpu_memory[i] = rawmem + i;
+  }
+
   for(int i = 0; i < sizeof(rom); i++) {
-    __memory[START + i] = rom + i;
+    __cpu_memory[START + i] = rom + i;
   }
 
   union u16 resetVector = {.value = START};
 
-  *__memory[0xfffc] = resetVector.lsb;
-  *__memory[0xfffd] = resetVector.msb;
+  *__cpu_memory[0xfffc] = resetVector.lsb;
+  *__cpu_memory[0xfffd] = resetVector.msb;
 
-  // hexdump(*(__memory + START), 320);
+  // hexdump(*(__cpu_memory + START), 320);
 
-  bus_write_on(&bus_write_2xx_screen);
-  bus_read_on(&bus_read_fe_rand);
-  bus_read_on(&bus_read_ff_rand);
+  cpu_write_on(&bus_write_2xx_screen);
+  cpu_read_on(&bus_read_fe_rand);
+  cpu_read_on(&bus_read_ff_rand);
 }
 
 void snake() {
@@ -183,6 +188,6 @@ void snake() {
     sdl_showRendering(rawPixel, SNAKE_WIDTH);
   }
 
-  // hexdumpSnake(*(__memory + 0x200), 1024);
+  // hexdumpSnake(*(__cpu_memory + 0x200), 1024);
 
 }

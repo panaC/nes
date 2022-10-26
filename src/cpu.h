@@ -3,11 +3,13 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "bus.h"
+#include "type.h"
 
 #ifndef CPU_FREQ
 #define CPU_FREQ (1000 * 1000 * 1) // 10Mhz snake
 #endif
+
+#define MEM_SIZE 65536 // 64KB // 2 ^16 // 65536
 
 union u_p {
 
@@ -72,13 +74,25 @@ struct instruction {
   spfn end;
 };
 
+typedef uint8_t *t_mem;
+typedef uint8_t (*readwritefn)(uint8_t value, uint32_t addr);
+
+#define CPU_EVENT_BUS_FN_SIZE 16
+
+readwritefn cpu_read_on(readwritefn fn);
+readwritefn cpu_write_on(readwritefn fn);
+
 void cpu_init();
 void cpu_irq();
 int cpu_run();
 int cpu_exec(t_mem *memory, t_registers *reg);
 void run(t_mem *memory, size_t size, t_registers *reg);
 
+uint8_t cpu_readbus(uint32_t addr);
+union u16 cpu_readbus16(uint32_t addr);
+void cpu_writebus(uint32_t addr, uint8_t value);
+
 // global extern var
-extern t_registers __cpu_reg;
+extern t_mem __cpu_memory[MEM_SIZE];
 
 #endif

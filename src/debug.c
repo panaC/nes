@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "debug.h"
+#include "log.h"
 #include "cpu.h"
 
 void print_register(t_registers *reg) {

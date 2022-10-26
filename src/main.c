@@ -7,17 +7,16 @@
 #include "parser.h"
 #include "sdl.h"
 #include "snake.h"
-#include "bus.h"
 
 int main(int argc, char **argv) {
   printf("hello nes\n");
 
-  // if (argc > 1) {
-  //   parse(argv[1]);
-  // } else 
-  //  puts("no file to parse");
+  if (argc > 1) {
+    parse(argv[1]);
+  } else {
+   puts("no file to parse");
+  }
 
-  bus_init();
   snake_init();
   sdl_init(SNAKE_WIDTH, SNAKE_HEIGHT);
   cpu_init();

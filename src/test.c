@@ -3,7 +3,6 @@
 #include <string.h>
 #include "test.h"
 #include "utils.h"
-#include "bus.h"
 
 void test_adc_opcode_immediate(t_mem *mem)
 {

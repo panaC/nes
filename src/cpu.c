@@ -4,14 +4,20 @@
 #include <time.h>
 #include "cpu.h"
 #include "debug.h"
-#include "bus.h"
 #include "log.h"
 
 #define debug(...) log_x(LOG_CPU, __VA_ARGS__)
 
+// extern global var
+t_mem __cpu_memory[MEM_SIZE] = {0};
+
+readwritefn __bus_read_on_array[CPU_EVENT_BUS_FN_SIZE] = {NULL};
+size_t __bus_read_on_size = 0;
+readwritefn __bus_write_on_array[CPU_EVENT_BUS_FN_SIZE] = {NULL};
+size_t __bus_write_on_size = 0;
+
 struct instruction _op[0xff] = {0};
 
-// global extern
 t_registers __cpu_reg = {
 	.pc = 0,
 	.sp = 0,
@@ -20,7 +26,77 @@ t_registers __cpu_reg = {
 	.x = 0,
 	.y = 0};
 
-void debug_opcode(enum e_addressMode mode, char *str, uint8_t op, union u16 arg) {
+readwritefn cpu_read_on(readwritefn fn) {
+  if (!fn) return NULL;
+  for (int i = 0; i < __bus_read_on_size; i++) {
+    if (fn == __bus_read_on_array[i]) return NULL;
+  }
+  __bus_read_on_array[__bus_read_on_size] = fn;
+  __bus_read_on_size++;
+
+  return fn;
+}
+
+readwritefn cpu_write_on(readwritefn fn) {
+  if (!fn) return NULL;
+  for (int i = 0; i < __bus_write_on_size; i++) {
+    if (fn == __bus_write_on_array[i]) return NULL;
+  }
+  __bus_write_on_array[__bus_write_on_size] = fn;
+  __bus_write_on_size++;
+
+  return fn;
+}
+
+static uint8_t readbus(uint32_t addr) {
+
+  debug("READ=0x%x VALUE=%d/%d/0x%x", addr, *__cpu_memory[addr], (int8_t)*__cpu_memory[addr], *__cpu_memory[addr]);
+
+  uint8_t value = *__cpu_memory[addr];
+  for (int i = 0; i < __bus_read_on_size; i++) {
+    value = __bus_read_on_array[i](value, addr);
+  }
+
+  return value;
+}
+uint8_t cpu_readbus(uint32_t addr) {
+	return readbus(addr);
+}
+
+static union u16 readbus16(uint32_t addr) {
+
+  debug("READ16=0x%x", addr);
+
+  union u16 v = {.lsb = readbus(addr), .msb = readbus(addr + 1)};
+  return v;
+}
+union u16 cpu_readbus16(uint32_t addr) {
+	return readbus16(addr);
+}
+
+static uint8_t readbus_pc() {
+  return readbus(__cpu_reg.pc + 1);
+}
+
+static union u16 readbus16_pc() {
+  return readbus16(__cpu_reg.pc + 1);
+}
+
+static void writebus(uint32_t addr, uint8_t value) {
+
+  debug("WRITE=0x%x VALUE=%d/%d", addr, value, (int8_t)value);
+
+  for (int i = 0; i < __bus_write_on_size; i++) {
+    value = __bus_write_on_array[i](value, addr);
+  }
+
+  *__cpu_memory[addr] = value;
+}
+void cpu_writebus(uint32_t addr, uint8_t value) {
+	return writebus(addr, value);
+}
+
+static void debug_opcode(enum e_addressMode mode, char *str, uint8_t op, union u16 arg) {
 
 	switch (mode)
 	{
@@ -70,7 +146,7 @@ void debug_opcode(enum e_addressMode mode, char *str, uint8_t op, union u16 arg)
 
 }
 
-uint32_t addressmode(enum e_addressMode mode, union u16 arg) {
+static uint32_t addressmode(enum e_addressMode mode, union u16 arg) {
 
 	switch (mode)
 	{
@@ -90,20 +166,27 @@ uint32_t addressmode(enum e_addressMode mode, union u16 arg) {
 		return readbus((arg.lsb + __cpu_reg.x) % 256) + readbus((arg.lsb + __cpu_reg.x + 1) % 256) * 256;
 	case INDIRECTY:
 		return readbus(arg.lsb) + readbus((arg.lsb + 1) % 256) * 256 + __cpu_reg.y;
+
+	case ACCUMULATOR:
+	case IMPLIED:
+	case IMMEDIATE:
+	case INDIRECT:
+	case RELATIVE:
+		break;
 	}
 
 	assert(0);
 	return 0;
 }
 
-uint8_t readDataFromAddressmode(enum e_addressMode mode, union u16 arg) {
+static uint8_t readDataFromAddressmode(enum e_addressMode mode, union u16 arg) {
 	if (mode == IMMEDIATE) {
 		return arg.lsb;
 	}
 	return readbus(addressmode(mode, arg));
 }
 
-union u16 read_arg(enum e_addressMode mode) {
+static union u16 read_arg(enum e_addressMode mode) {
 
 	switch (mode)
 	{
@@ -140,7 +223,7 @@ union u16 read_arg(enum e_addressMode mode) {
 
 
 
-int16_t not_found() {
+static int16_t not_found() {
 
 	debug("OP=%x not found", readbus(__cpu_reg.pc));
 	assert(0);
@@ -148,27 +231,27 @@ int16_t not_found() {
 	return 0;
 }
 
-int16_t nop() {
+static int16_t nop() {
 
 	// nop
 
 	return 0;
 }
 
-int16_t brk() {
+static int16_t brk() {
 	// irq();
 	__cpu_reg.p.B = 1;
 
 	return 0;
 }
 
-void sp_zn(int16_t result)
+static void sp_zn(int16_t result)
 {
 	__cpu_reg.p.Z = !result;
 	__cpu_reg.p.N = !!(result & 0x80);
 }
 
-int16_t adc(enum e_addressMode mode, union u16 uarg) {
+static int16_t adc(enum e_addressMode mode, union u16 uarg) {
 	int16_t result = __cpu_reg.a += readDataFromAddressmode(mode, uarg) + __cpu_reg.p.C;
 
 	// http://www.6502.org/tutorials/vflag.html
@@ -186,11 +269,11 @@ int16_t adc(enum e_addressMode mode, union u16 uarg) {
 	return result;
 }
 
-int16_t and(enum e_addressMode mode, union u16 uarg) {
+static int16_t and(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.a &= readDataFromAddressmode(mode, uarg);
 }
 
-int16_t asl(enum e_addressMode mode, union u16 uarg) {
+static int16_t asl(enum e_addressMode mode, union u16 uarg) {
 	uint16_t result = 0;
 
 	if (mode == ACCUMULATOR) {
@@ -205,7 +288,7 @@ int16_t asl(enum e_addressMode mode, union u16 uarg) {
 	return result;
 }
 
-int16_t lsr(enum e_addressMode mode, union u16 uarg) {
+static int16_t lsr(enum e_addressMode mode, union u16 uarg) {
 	uint16_t result = 0;
 	uint8_t mem = 0;
 
@@ -223,55 +306,55 @@ int16_t lsr(enum e_addressMode mode, union u16 uarg) {
 	return result;
 }
 
-int16_t bcc(enum e_addressMode mode, union u16 uarg) {
+static int16_t bcc(enum e_addressMode mode, union u16 uarg) {
 	if (__cpu_reg.p.C == 0)
 		__cpu_reg.pc += (int8_t)uarg.lsb;
 	return 0;
 }
 
-int16_t bcs(enum e_addressMode mode, union u16 uarg) {
+static int16_t bcs(enum e_addressMode mode, union u16 uarg) {
 	if (__cpu_reg.p.C == 1)
 		__cpu_reg.pc += (int8_t)uarg.lsb;
 	return 0;
 }
 
-int16_t beq(enum e_addressMode mode, union u16 uarg) {
+static int16_t beq(enum e_addressMode mode, union u16 uarg) {
 	if (__cpu_reg.p.Z == 1)
 		__cpu_reg.pc += (int8_t)uarg.lsb;
 	return 0;
 }
 
-int16_t bmi(enum e_addressMode mode, union u16 uarg) {
+static int16_t bmi(enum e_addressMode mode, union u16 uarg) {
 	if (__cpu_reg.p.N == 1)
 		__cpu_reg.pc += (int8_t)uarg.lsb;
 	return 0;
 }
 
-int16_t bne(enum e_addressMode mode, union u16 uarg) {
+static int16_t bne(enum e_addressMode mode, union u16 uarg) {
 	if (__cpu_reg.p.Z == 0)
 		__cpu_reg.pc += (int8_t)uarg.lsb;
 	return 0;
 }
 
-int16_t bpl(enum e_addressMode mode, union u16 uarg) {
+static int16_t bpl(enum e_addressMode mode, union u16 uarg) {
 	if (__cpu_reg.p.N == 0)
 		__cpu_reg.pc += (int8_t)uarg.lsb;
 	return 0;
 }
 
-int16_t bvc(enum e_addressMode mode, union u16 uarg) {
+static int16_t bvc(enum e_addressMode mode, union u16 uarg) {
 	if (__cpu_reg.p.V == 0)
 		__cpu_reg.pc += (int8_t)uarg.lsb;
 	return 0;
 }
 
-int16_t bvs(enum e_addressMode mode, union u16 uarg) {
+static int16_t bvs(enum e_addressMode mode, union u16 uarg) {
 	if (__cpu_reg.p.V == 1)
 		__cpu_reg.pc += (int8_t)uarg.lsb;
 	return 0;
 }
 
-int16_t bit(enum e_addressMode mode, union u16 uarg) {
+static int16_t bit(enum e_addressMode mode, union u16 uarg) {
 
 	int8_t value = __cpu_reg.a & readbus(addressmode(mode, uarg));
 
@@ -282,23 +365,23 @@ int16_t bit(enum e_addressMode mode, union u16 uarg) {
 	return 0;
 }
 
-int16_t clc(enum e_addressMode mode, union u16 uarg) {
+static int16_t clc(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.p.C = 0;
 }
 
-int16_t cld(enum e_addressMode mode, union u16 uarg) {
+static int16_t cld(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.p.D = 0;
 }
 
-int16_t cli(enum e_addressMode mode, union u16 uarg) {
+static int16_t cli(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.p.I = 0;
 }
 
-int16_t clv(enum e_addressMode mode, union u16 uarg) {
+static int16_t clv(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.p.V = 0;
 }
 
-int16_t sbc(enum e_addressMode mode, union u16 uarg) {
+static int16_t sbc(enum e_addressMode mode, union u16 uarg) {
 	int16_t result = __cpu_reg.a -= readDataFromAddressmode(mode, uarg) - (1 - __cpu_reg.p.C);
 
 	// http://www.6502.org/tutorials/vflag.html
@@ -315,126 +398,126 @@ int16_t sbc(enum e_addressMode mode, union u16 uarg) {
 	return result;
 }
 
-int16_t sec(enum e_addressMode mode, union u16 uarg) {
+static int16_t sec(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.p.C = 1;
 }
 
-int16_t sed(enum e_addressMode mode, union u16 uarg) {
+static int16_t sed(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.p.D = 1;
 }
 
-int16_t sei(enum e_addressMode mode, union u16 uarg) {
+static int16_t sei(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.p.I = 1;
 }
 
-int16_t tax(enum e_addressMode mode, union u16 uarg) {
+static int16_t tax(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.x = __cpu_reg.a;
 }
 
-int16_t tay(enum e_addressMode mode, union u16 uarg) {
+static int16_t tay(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.y = __cpu_reg.a;
 }
 
-int16_t tsx(enum e_addressMode mode, union u16 uarg) {
+static int16_t tsx(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.x = __cpu_reg.sp;
 }
 
-int16_t txa(enum e_addressMode mode, union u16 uarg) {
+static int16_t txa(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.a = __cpu_reg.x;
 }
 
-int16_t txs(enum e_addressMode mode, union u16 uarg) {
+static int16_t txs(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.sp = __cpu_reg.x;
 }
 
-int16_t tya(enum e_addressMode mode, union u16 uarg) {
+static int16_t tya(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.a = __cpu_reg.y;
 }
 
-int16_t cmp(enum e_addressMode mode, union u16 uarg) {
+static int16_t cmp(enum e_addressMode mode, union u16 uarg) {
 	int16_t result = __cpu_reg.a - readDataFromAddressmode(mode, uarg);
 	__cpu_reg.p.C = !(!!(result & 0x80));
 	return result;
 }
 
-int16_t cpx(enum e_addressMode mode, union u16 uarg) {
+static int16_t cpx(enum e_addressMode mode, union u16 uarg) {
 	int16_t result = __cpu_reg.x - readDataFromAddressmode(mode, uarg);
 	__cpu_reg.p.C = !(!!(result & 0x80));
 	return result;
 }
 
-int16_t cpy(enum e_addressMode mode, union u16 uarg) {
+static int16_t cpy(enum e_addressMode mode, union u16 uarg) {
 	int16_t result = __cpu_reg.y - readDataFromAddressmode(mode, uarg);
 	__cpu_reg.p.C = !(!!(result & 0x80));
 	return result;
 }
 
-int16_t dec(enum e_addressMode mode, union u16 uarg) {
+static int16_t dec(enum e_addressMode mode, union u16 uarg) {
 	uint32_t addr = addressmode(mode, uarg);
 	uint8_t result = (int8_t)readbus(addr) - 1;
 	writebus(addr, result);
 	return result;
 }
 
-int16_t inc(enum e_addressMode mode, union u16 uarg) {
+static int16_t inc(enum e_addressMode mode, union u16 uarg) {
 	uint32_t addr = addressmode(mode, uarg);
 	uint8_t result = (int8_t)readbus(addr) + 1;
 	writebus(addr, result);
 	return result;
 }
 
-int16_t dex(enum e_addressMode mode, union u16 uarg) {
+static int16_t dex(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.x = (__cpu_reg.x - 1) & 0xff;
 }
 
-int16_t dey(enum e_addressMode mode, union u16 uarg) {
+static int16_t dey(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.y = (__cpu_reg.y - 1) & 0xff;
 }
 
-int16_t inx(enum e_addressMode mode, union u16 uarg) {
+static int16_t inx(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.x = (__cpu_reg.x + 1) & 0xff;
 }
 
-int16_t iny(enum e_addressMode mode, union u16 uarg) {
+static int16_t iny(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.y = (__cpu_reg.y + 1) & 0xff;
 }
 
-int16_t eor(enum e_addressMode mode, union u16 uarg) {
+static int16_t eor(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.a ^= (int8_t)readDataFromAddressmode(mode, uarg);
 }
 
-int16_t lda(enum e_addressMode mode, union u16 uarg) {
+static int16_t lda(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.a = readDataFromAddressmode(mode, uarg);
 }
 
-int16_t ldx(enum e_addressMode mode, union u16 uarg) {
+static int16_t ldx(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.x = readDataFromAddressmode(mode, uarg);
 }
 
-int16_t ldy(enum e_addressMode mode, union u16 uarg) {
+static int16_t ldy(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.y = readDataFromAddressmode(mode, uarg);
 }
 
-int16_t sta(enum e_addressMode mode, union u16 uarg) {
+static int16_t sta(enum e_addressMode mode, union u16 uarg) {
 	writebus(addressmode(mode, uarg), __cpu_reg.a);
 	return 0;
 }
 
-int16_t stx(enum e_addressMode mode, union u16 uarg) {
+static int16_t stx(enum e_addressMode mode, union u16 uarg) {
 	writebus(addressmode(mode, uarg), __cpu_reg.x);
 	return 0;
 }
 
-int16_t sty(enum e_addressMode mode, union u16 uarg) {
+static int16_t sty(enum e_addressMode mode, union u16 uarg) {
 	writebus(addressmode(mode, uarg), __cpu_reg.y);
 	return 0;
 }
 
-int16_t ora(enum e_addressMode mode, union u16 uarg) {
+static int16_t ora(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.a |= readDataFromAddressmode(mode, uarg);
 }
 
-int16_t rol(enum e_addressMode mode, union u16 uarg) {
+static int16_t rol(enum e_addressMode mode, union u16 uarg) {
 	uint8_t mem, oldbit = 0;
 	uint32_t addr = 0;
 	int16_t result = 0;
@@ -459,7 +542,7 @@ int16_t rol(enum e_addressMode mode, union u16 uarg) {
 	return result;
 }
 
-int16_t ror(enum e_addressMode mode, union u16 uarg) {
+static int16_t ror(enum e_addressMode mode, union u16 uarg) {
 	uint8_t mem, oldbit = 0;
 	uint32_t addr = 0;
 	int16_t result = 0;
@@ -484,30 +567,30 @@ int16_t ror(enum e_addressMode mode, union u16 uarg) {
 	return result;
 }
 
-int16_t pha(enum e_addressMode mode, union u16 uarg) {
+static int16_t pha(enum e_addressMode mode, union u16 uarg) {
 	writebus(0x01ff - __cpu_reg.sp--, __cpu_reg.a);
 	return 0;
 }
 
-int16_t php(enum e_addressMode mode, union u16 uarg) {
+static int16_t php(enum e_addressMode mode, union u16 uarg) {
 	writebus(0x01ff - __cpu_reg.sp--, __cpu_reg.p.value);
 	return 0;
 }
 
-int16_t pla(enum e_addressMode mode, union u16 uarg) {
+static int16_t pla(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.a = readbus(0x01ff - __cpu_reg.sp++);
 }
 
-int16_t plp(enum e_addressMode mode, union u16 uarg) {
+static int16_t plp(enum e_addressMode mode, union u16 uarg) {
 	return __cpu_reg.p.value = readbus(0x01ff - __cpu_reg.sp++);
 }
 
-int16_t jmp_absolute(enum e_addressMode mode, union u16 uarg) {
+static int16_t jmp_absolute(enum e_addressMode mode, union u16 uarg) {
 	__cpu_reg.pc = uarg.value;
 	return 0;
 }
 
-int16_t jsr(enum e_addressMode mode, union u16 uarg) {
+static int16_t jsr(enum e_addressMode mode, union u16 uarg) {
 	union u16 pc = {.value = __cpu_reg.pc};
 
 	writebus(0x01ff - __cpu_reg.sp, pc.msb);
@@ -518,7 +601,7 @@ int16_t jsr(enum e_addressMode mode, union u16 uarg) {
 	return 0;
 }
 
-int16_t rts(enum e_addressMode mode, union u16 uarg) {
+static int16_t rts(enum e_addressMode mode, union u16 uarg) {
 	union u16 pc = {0};
 
 	pc.lsb = readbus(0x01ff - ++__cpu_reg.sp);
@@ -764,7 +847,7 @@ void cpu_init()
 	}
 
 	t_registers *reg = &__cpu_reg;
-	t_mem *memory = __memory; 
+	t_mem *memory = __cpu_memory; 
 
 	assert(MEM_SIZE == 64 * 1024);
 	reg->pc = readbus16(0xfffc).value;
@@ -859,7 +942,7 @@ int cpu_run(void *pause)
 			int c = getchar();
 			if (c == 'p')
 			{
-				// hexdumpSnake(*(__memory + 0x200), 1024);
+				// hexdumpSnake(*(__cpu_memory + 0x200), 1024);
 				continue;
 			}
 			else if (c == 'r')
@@ -868,12 +951,12 @@ int cpu_run(void *pause)
 				continue;
 			}
 			// lf 10
-			quit = cpu_exec(__memory, &__cpu_reg);
+			quit = cpu_exec(__cpu_memory, &__cpu_reg);
 			continue;
 		}
 
 		const int sleep = nanosleep(&time, NULL);
-		quit = cpu_exec(__memory, &__cpu_reg);
+		quit = cpu_exec(__cpu_memory, &__cpu_reg);
 	}
 
 	return quit;
