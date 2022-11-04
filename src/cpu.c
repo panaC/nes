@@ -61,14 +61,23 @@ readwritefn cpu_write_on(readwritefn fn) {
 
 static uint8_t readbus(uint32_t addr) {
 
-  debug("READ=0x%x VALUE=%d/%d/0x%x", addr, *__cpu_memory[addr], (int8_t)*__cpu_memory[addr], *__cpu_memory[addr]);
+	static int loop = 0;
+	++loop;
+	if (loop > 10) assert(0);
 
-  uint8_t value = *__cpu_memory[addr];
-  for (int i = 0; i < __bus_read_on_size; i++) {
-    value = __bus_read_on_array[i](value, addr);
-  }
+  uint8_t value = 0;
+	if (__cpu_memory[addr]) {
+		value = *__cpu_memory[addr];
+	} else {
+		for (int i = 0; i < __bus_read_on_size; i++) {
+			value = __bus_read_on_array[i](value, addr);
+		}
+	}
 
-  return value;
+	loop = 0;
+	if (!__no_debug)
+		debug("READ=0x%x VALUE=%d/%d/0x%x", addr, value, (int8_t)value, value);
+	return value;
 }
 uint8_t cpu_readbus(uint32_t addr) {
 	return readbus(addr);
@@ -76,9 +85,10 @@ uint8_t cpu_readbus(uint32_t addr) {
 
 static union u16 readbus16(uint32_t addr) {
 
-  debug("READ16=0x%x", addr);
-
+	__no_debug = true;
   union u16 v = {.lsb = readbus(addr), .msb = readbus(addr + 1)};
+	__no_debug = false;
+  debug("READ16=0x%x VALUE=0x%x", addr, v.value);
   return v;
 }
 union u16 cpu_readbus16(uint32_t addr) {
@@ -95,13 +105,18 @@ static union u16 readbus16_pc() {
 
 static void writebus(uint32_t addr, uint8_t value) {
 
-  debug("WRITE=0x%x VALUE=%d/%d", addr, value, (int8_t)value);
+	static int loop = 0;
+	++loop;
+	if (loop > 10) assert(0);
 
   for (int i = 0; i < __bus_write_on_size; i++) {
     value = __bus_write_on_array[i](value, addr);
   }
 
-  *__cpu_memory[addr] = value;
+	loop = 0;
+  debug("WRITE=0x%x VALUE=%d/%d", addr, value, (int8_t)value);
+	if (__cpu_memory[addr])
+		*__cpu_memory[addr] = value;
 }
 void cpu_writebus(uint32_t addr, uint8_t value) {
 	return writebus(addr, value);
