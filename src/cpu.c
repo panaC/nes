@@ -8,6 +8,17 @@
 
 #define debug(...) log_x(LOG_CPU, __VA_ARGS__)
 
+int __no_debug = true;
+
+/**
+ * 6502 it vector
+ *
+ *
+ * NMI 			-> LSB:0xFFFA - MSB:0xFFFB
+ * RESET 		-> LSB:0xFFFC - MSB:0xFFFD
+ * IRQ/BRK	-> LSB:0xFFFE - MSB:0xFFFF
+ */
+
 // extern global var
 t_mem __cpu_memory[MEM_SIZE] = {0};
 
