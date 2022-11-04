@@ -115,6 +115,14 @@ void mapper0(struct s_ines_parsed ines) {
   _prgrom_size = ines.ines->size_prgrom;
 
   debug("PRGROM start at %d with size of %d", _prgrom - ines.ptr, _prgrom_size * 0x4000);
+
+  // hexdump(_prgrom, _prgrom_size * 0x4000);
+
+  // FILE *write_ptr;
+
+  // write_ptr = fopen("bump.bin","wb");  // w for write, b for binary
+
+  // fwrite(_prgrom, _prgrom_size * 0x4000, 1, write_ptr);
 }
 
 static void nes_init(struct s_ines_parsed ines) {
@@ -152,6 +160,6 @@ void nes(struct s_ines_parsed ines) {
   cpu_init();
 
   // cpu_run();
-  cpu_listing();
+  // cpu_listing();
 
 }

@@ -93,6 +93,9 @@ uint8_t cpu_readbus(uint32_t addr);
 union u16 cpu_readbus16(uint32_t addr);
 void cpu_writebus(uint32_t addr, uint8_t value);
 
+// global static
+struct instruction _op[0xff];
+
 // global extern var
 extern t_mem __cpu_memory[MEM_SIZE];
 

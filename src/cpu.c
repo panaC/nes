@@ -1010,14 +1010,3 @@ void run(t_mem *memory, size_t size, t_registers *reg)
 	{
 	}
 }
-
-void cpu_listing() {
-
-	while(__cpu_reg.pc < 0xffff) {
-		__no_debug = true;
-		struct instruction op = _op[readbus(__cpu_reg.pc)];
-		union u16 uarg = read_arg(op.mode);
-		debug_opcode(op.mode, op.str, op.code, uarg);
-		__cpu_reg.pc += op.size;
-	}
-}
