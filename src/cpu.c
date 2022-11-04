@@ -808,7 +808,7 @@ struct instruction tab[] = {
 	{"PLA",		0x68,		IMPLIED,		1,	3,	0,	&pla,							&sp_zn},
 	{"PLP",		0x28,		IMPLIED,		1,	3,	0,	&plp,							NULL},
 
-	{"JMP",		0x4c,		ABSOLUTE,		0,	3,	0,	&jmp_absolute,		NULL},
+	{"JMP",		0x4c,		ABSOLUTE,		3,	3,	0,	&jmp_absolute,		NULL},
 	{"JMP",		0x6c,		INDIRECT,		3,	5,	0,	&not_found,				NULL}, // TODO
 
 	{"JSR",		0x20,		ABSOLUTE,		3,	6,	0,	&jsr,							NULL},
@@ -819,46 +819,48 @@ struct instruction tab[] = {
 
 };
 
-static void handle_op(struct instruction op) {
+static int handle_op(struct instruction op) {
 
 	static int cycles_remaining = 0;
-	static int cycles_done = false;
+	static union u16 uarg = (union u16){.value = 0};
 
-	// TODO: Handle reset
-	if (cycles_remaining) {
+	if (cycles_remaining > 1) {
 		cycles_remaining--;
-		cycles_done = !cycles_remaining;
-		return ;
-	}
+		return false;
+	} else if (cycles_remaining == 0) {
+		// 1. read the arg in function of addressMode
+		uarg = read_arg(op.mode);
 
-	// 1. read the arg in function of addressMode
-	union u16 uarg = read_arg(op.mode);
-
-	// 2. page crossed
-	if (op.crossed) {
-		if (uarg.lsb + __cpu_reg.x > 0xff) {
-			op.cycles++;
+		// 2. page crossed
+		if (op.crossed) {
+			if (uarg.lsb + __cpu_reg.x > 0xff) {
+				op.cycles++;
+			}
 		}
-	}
 
-	// 3. cycles
-	if (!cycles_done) {
+		// 3. cycles
 		cycles_remaining = op.cycles - 1;
-		return ;
+		return false;
 	}
+	cycles_remaining = 0;
 
 	// 4. debug
 	debug_opcode(op.mode, op.str, op.code, uarg);
 
-	// 5. increment pc
-	__cpu_reg.pc += op.size;
 
+	uint16_t pc = __cpu_reg.pc;
 	// 6. algo
 	uint16_t result = op.fn(op.mode, uarg);
+	
+	// 5. increment pc
+	if (pc == __cpu_reg.pc)
+		__cpu_reg.pc += op.size;
 
 	// 7. set to registers Z & N
 	if (op.end)
 		op.end(result);
+
+	return true;
 
 }
 
@@ -871,19 +873,18 @@ void cpu_init()
 	for (int i = 0; i < (sizeof(tab)/sizeof(struct instruction)); i++) {
 		_op[tab[i].code] = tab[i];
 	}
-
-	t_registers *reg = &__cpu_reg;
-	t_mem *memory = __cpu_memory; 
-
-	assert(MEM_SIZE == 64 * 1024);
-	reg->pc = readbus16(0xfffc).value;
-	reg->a = reg->x = reg->y = 0;
-	reg->p.value = 0x34;
-	reg->sp = 0xfd;
-	*memory[0x4017] = 0;
-	*memory[0x4015] = 0;
-	bzero(memory[0x4000], 16);
-	bzero(memory[0x4010], 4);
+	
+	// https://www.nesdev.org/wiki/CPU_power_up_state
+	__cpu_reg.pc = readbus16(0xfffc).value;
+	__cpu_reg.a = __cpu_reg.x = __cpu_reg.y = 0;
+	__cpu_reg.p.value = 0x34;
+	__cpu_reg.sp = 0xfd;
+	writebus(0x4017, 0);
+	writebus(0x4015, 0);
+	for (int i = 0; i <= 0xf; i++)
+		writebus(0x4000 + i, 16);
+	for (int i = 0; i <= 0x3; i++)
+		writebus(0x4010 + i, 16);
 }
 
 void cpu_irq()
@@ -908,39 +909,48 @@ void reset(t_registers *reg, t_mem *memory)
 int cpu_exec(t_mem *memory, t_registers *reg)
 {
 
-	uint8_t op = readbus(reg->pc);
+	static int pipeline_flag_ready = 1;
+	static uint8_t op = 0;
+
+	// 1. read op
+	if (pipeline_flag_ready)
+		op = readbus(reg->pc);
 
 #ifdef DEBUG_CPU
 	if (op == 0)
 	{
 		// break;
 		debug("DEBUG_CPU BREAK");
+		pipeline_flag_ready = 1;
 		return -1;
 	}
 #endif
 
-	handle_op(_op[op]);
+	// 2. handle op pipeline
+	pipeline_flag_ready = handle_op(_op[op]);
 
 	// debug("cycle=%d", cycle);
-	print_register(&__cpu_reg);
+	if (pipeline_flag_ready)
+		print_register(&__cpu_reg);
 
-	return 0;
+	return pipeline_flag_ready;
 }
 
-int cpu_run(void *pause)
+int cpu_run()
 {
 
 	int debug = 0;
-	int brk = 0;//0x0694;//0x0734;
+	int brk = 0;//0xe59c;//0x0694;//0x0734;
 	//int cpu_nolog_on_pc[] = {0x072f, 0x0730, 0x0731, 0x0732, -1};
-	uint64_t t = (1000 * 1000 * 1000) / CPU_FREQ; // tick every 1ns // limit to 1Ghz
-	const struct timespec time = {.tv_sec = CPU_FREQ == 1 ? 1 : 0, .tv_nsec = CPU_FREQ == 1 ? 0 : t};
+	// uint64_t t = (1000 * 1000 * 1000) / CPU_FREQ; // tick every 1ns // limit to 1Ghz
+	// const struct timespec time = {.tv_sec = CPU_FREQ == 1 ? 1 : 0, .tv_nsec = CPU_FREQ == 1 ? 0 : t};
 	int quit = 0;
+	int state = 0;
 	// int log_cpu_set = !!(log_get_level_bin() | LOG_CPU | LOG_REGISTER | LOG_BUS);
 	while (!quit)
 	{
 
-		while((*(char*)pause) == 1);
+		// while((*(char*)pause) == 1);
 
 		// TODO: create a dedicated debugger function
 		// And replace debug log with the name of instruction and value
@@ -977,12 +987,14 @@ int cpu_run(void *pause)
 				continue;
 			}
 			// lf 10
-			quit = cpu_exec(__cpu_memory, &__cpu_reg);
+			state = cpu_exec(__cpu_memory, &__cpu_reg);
+			quit = state == -1;
 			continue;
 		}
 
-		const int sleep = nanosleep(&time, NULL);
-		quit = cpu_exec(__cpu_memory, &__cpu_reg);
+		// const int sleep = nanosleep(&time, NULL);
+		state = cpu_exec(__cpu_memory, &__cpu_reg);
+		quit = state == -1;
 	}
 
 	return quit;
@@ -996,5 +1008,16 @@ void run(t_mem *memory, size_t size, t_registers *reg)
 
 	while (cpu_exec(memory, reg) != 0)
 	{
+	}
+}
+
+void cpu_listing() {
+
+	while(__cpu_reg.pc < 0xffff) {
+		__no_debug = true;
+		struct instruction op = _op[readbus(__cpu_reg.pc)];
+		union u16 uarg = read_arg(op.mode);
+		debug_opcode(op.mode, op.str, op.code, uarg);
+		__cpu_reg.pc += op.size;
 	}
 }

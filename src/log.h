@@ -32,7 +32,7 @@ enum
 {
   LOG_ERROR = 0x00,
   LOG_DEBUG = 0x01,
-  LOG_BUS = 0x02,
+  LOG_NES = 0x02,
   LOG_SDL = 0x04,
   LOG_CPU = 0x08,
   LOG_PARSER = 0x10,

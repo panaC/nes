@@ -87,6 +87,7 @@ void cpu_irq();
 int cpu_run();
 int cpu_exec(t_mem *memory, t_registers *reg);
 void run(t_mem *memory, size_t size, t_registers *reg);
+void cpu_listing();
 
 uint8_t cpu_readbus(uint32_t addr);
 union u16 cpu_readbus16(uint32_t addr);
