@@ -133,16 +133,16 @@ static void debug_opcode(enum e_addressMode mode, char *str, uint8_t op, union u
 		debug("$%04x    %02x           %s", __cpu_reg.pc, op, str);
 		break;
 	case IMMEDIATE:
-		debug("$%04x    %02x %02x        %s #$%02x", __cpu_reg.pc, op, arg, str, arg.lsb);
+		debug("$%04x    %02x %02x        %s #$%02x", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
 		break;
 	case ABSOLUTE:
 		debug("$%04x    %02x %02x %02x     %s $%04x", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
 		break;
 	case ZEROPAGE:
-		debug("$%04x    %02x %02x        %s $%02x", __cpu_reg.pc, op, arg, str, arg.lsb);
+		debug("$%04x    %02x %02x        %s $%02x", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
 		break;
 	case RELATIVE:
-		debug("$%04x    %02x %02x        %s $%02x", __cpu_reg.pc, op, arg, str, arg.lsb);
+		debug("$%04x    %02x %02x        %s $%02x", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
 		break;
 	case ABSOLUTEX:
 		debug("$%04x    %02x %02x %02x     %s $%04x,X", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
@@ -151,19 +151,19 @@ static void debug_opcode(enum e_addressMode mode, char *str, uint8_t op, union u
 		debug("$%04x    %02x %02x %02x     %s $%04x,Y", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
 		break;
 	case ZEROPAGEX:
-		debug("$%04x    %02x %02x        %s $%02x,X", __cpu_reg.pc, op, arg, str, arg.lsb);
+		debug("$%04x    %02x %02x        %s $%02x,X", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
 		break;
 	case ZEROPAGEY:
-		debug("$%04x    %02x %02x        %s $%02x,Y", __cpu_reg.pc, op, arg, str, arg.lsb);
+		debug("$%04x    %02x %02x        %s $%02x,Y", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
 		break;
 	case INDIRECT:
 		debug("$%04x    %02x %02x %02x     %s ($%04x)", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
 		break;
 	case INDIRECTX:
-		debug("$%04x    %02x %02x        %s ($%02x,X)", __cpu_reg.pc, op, arg, str, arg.lsb);
+		debug("$%04x    %02x %02x        %s ($%02x,X)", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
 		break;
 	case INDIRECTY:
-		debug("$%04x    %02x %02x        %s ($%02x,Y)", __cpu_reg.pc, op, arg, str, arg.lsb);
+		debug("$%04x    %02x %02x        %s ($%02x,Y)", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
 		break;
 
 	default:
@@ -939,7 +939,7 @@ int cpu_exec(t_mem *memory, t_registers *reg)
 int cpu_run()
 {
 
-	int debug = 0;
+	int debug = 1;
 	int brk = 0;//0xe59c;//0x0694;//0x0734;
 	//int cpu_nolog_on_pc[] = {0x072f, 0x0730, 0x0731, 0x0732, -1};
 	// uint64_t t = (1000 * 1000 * 1000) / CPU_FREQ; // tick every 1ns // limit to 1Ghz
