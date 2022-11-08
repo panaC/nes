@@ -33,10 +33,12 @@ uint8_t read_mirror_000_7ff(uint8_t value, uint32_t addr) {
   return value;
 }
 
+uint8_t __ppu[9] = {0};
 uint8_t write_ppu_register_log(uint8_t value, uint32_t addr) {
 
   if (addr >= 0x2000 && addr < 0x2008) {
     debug("WRITE PPU REGISTER 0x%x=%d", addr, value);
+    __ppu[addr - 0x2000] = value;
   }
   return value;
 }
@@ -45,7 +47,9 @@ uint8_t read_ppu_register_log(uint8_t value, uint32_t addr) {
 
   if (addr >= 0x2000 && addr < 0x2008) {
     debug("READ PPU REGISTER 0x%x=%d", addr, value);
+    return __ppu[addr - 0x2000];
   }
+
   return value;
 }
 
@@ -95,10 +99,10 @@ uint8_t read_cartridge(uint8_t value, uint32_t addr) {
 uint8_t write_catridge(uint8_t value, uint32_t addr) {
   if (addr >= 0x8000 && addr <= 0xffff) {
     debug("WRITE to Cartridge Space WHY ? 0x%x=%d", addr, value);
-    assert(0); // error read only
+    // assert(0); // error read only
   } else if (addr >= 0x4020) {
     debug("WRITE Unknown Cartridge Space 0x%x=%d", addr, value);
-    assert(0); // Read only ?
+    // assert(0); // Read only ?
   }
   return value;
 }
@@ -134,14 +138,20 @@ static void nes_init(struct s_ines_parsed ines) {
     __cpu_memory[i] = rawmem + i;
   }
 
+  // PPU init
+  // https://www.nesdev.org/wiki/PPU_registers#PPUSTATUS
+  // 0x2002 bit 7 should equal one when the ppu is initialize
+  // https://github.com/christopherpow/nes-test-roms/blob/95d8f621ae55cee0d09b91519a8989ae0e64753b/cpu_dummy_reads/source/common/shell.inc#L157
+  __ppu[2] = 0x80;
+
   cpu_read_on(&assert_memory);
   cpu_write_on(&assert_memory);
 
-  cpu_write_on(&write_mirror_000_7ff);
   cpu_read_on(&read_mirror_000_7ff);
+  cpu_write_on(&write_mirror_000_7ff);
 
-  cpu_write_on(&write_ppu_register_log);
   cpu_read_on(&read_ppu_register_log);
+  cpu_write_on(&write_ppu_register_log);
 
   cpu_read_on(&read_mirror_ppu);
   cpu_write_on(&write_mirror_ppu);
