@@ -278,7 +278,9 @@ static void sp_zn(int16_t result)
 }
 
 static int16_t adc(enum e_addressMode mode, union u16 uarg) {
-	int16_t result = __cpu_reg.a += readDataFromAddressmode(mode, uarg) + __cpu_reg.p.C;
+
+	uint8_t mem = readDataFromAddressmode(mode, uarg);
+	int16_t result = __cpu_reg.a += mem + __cpu_reg.p.C;
 
 	// http://www.6502.org/tutorials/vflag.html
 	// seems to be the right value : see in github nes emulation
@@ -292,7 +294,7 @@ static int16_t adc(enum e_addressMode mode, union u16 uarg) {
 	// http://www.6502.org/tutorials/vflag.html
 	__cpu_reg.p.V = result >= 0 ? (result & 0x100) >> 8 : !((result & 0x80) >> 7);
 
-	return result;
+	return result & 0xff; // result may be equal to 0x100 with the carry
 }
 
 static int16_t and(enum e_addressMode mode, union u16 uarg) {
