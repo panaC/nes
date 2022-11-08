@@ -621,6 +621,7 @@ static int16_t jmp_absolute(enum e_addressMode mode, union u16 uarg) {
 
 static int16_t jsr(enum e_addressMode mode, union u16 uarg) {
 	union u16 pc = {.value = __cpu_reg.pc};
+	pc.value += 3 - 1; // jsr size equal 3 minus one size of the rts opcode
 
 	writebus(0x01ff - __cpu_reg.sp, pc.msb);
 	__cpu_reg.sp--;
