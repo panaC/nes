@@ -79,10 +79,10 @@ static void stdout_callback(log_Event *ev) {
   buf[strftime(buf, sizeof(buf), "%H:%M:%S", ev->time)] = '\0';
   int lvl = get_level(ev->level);
 #ifdef LOG_USE_COLOR
-  fprintf(
-    ev->udata, "%s %s%-5s\x1b[0m \x1b[90m%s:%d:\x1b[0m ",
-    buf, level_colors[lvl], level_strings[lvl],
-    ev->file, ev->line);
+  // fprintf(
+  //   ev->udata, "%s %s%-5s\x1b[0m \x1b[90m%s:%d:\x1b[0m ",
+  //   buf, level_colors[lvl], level_strings[lvl],
+  //   ev->file, ev->line);
 #else
   fprintf(
     ev->udata, "%s %-5s %s:%d: ",
