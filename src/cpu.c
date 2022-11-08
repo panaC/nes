@@ -384,11 +384,12 @@ static int16_t bvs(enum e_addressMode mode, union u16 uarg) {
 
 static int16_t bit(enum e_addressMode mode, union u16 uarg) {
 
-	int8_t value = __cpu_reg.a & readbus(addressmode(mode, uarg));
+	uint8_t mem = readbus(addressmode(mode, uarg));
+	int8_t value = __cpu_reg.a & mem;
 
 	__cpu_reg.p.Z = !value;
-	__cpu_reg.p.V = !!(value & 0x40);
-	__cpu_reg.p.N = !!(value & 0x80);
+	__cpu_reg.p.V = !!(mem & 0x40);
+	__cpu_reg.p.N = !!(mem & 0x80);
 
 	return 0;
 }
