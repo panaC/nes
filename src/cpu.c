@@ -607,11 +607,11 @@ static int16_t php(enum e_addressMode mode, union u16 uarg) {
 }
 
 static int16_t pla(enum e_addressMode mode, union u16 uarg) {
-	return __cpu_reg.a = readbus(0x01ff - __cpu_reg.sp++);
+	return __cpu_reg.a = readbus(0x01ff - ++__cpu_reg.sp);
 }
 
 static int16_t plp(enum e_addressMode mode, union u16 uarg) {
-	return __cpu_reg.p.value = readbus(0x01ff - __cpu_reg.sp++);
+	return __cpu_reg.p.value = readbus(0x01ff - ++__cpu_reg.sp);
 }
 
 static int16_t jmp_absolute(enum e_addressMode mode, union u16 uarg) {
