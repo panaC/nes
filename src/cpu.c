@@ -857,7 +857,7 @@ static int handle_op(struct instruction op) {
 	uint16_t result = op.fn(op.mode, uarg);
 	
 	// 5. increment pc
-	if (pc == __cpu_reg.pc)
+	if (strcmp(op.str, "JMP") != 0 && strcmp(op.str, "JSR") != 0) // jmp and jsr jump to a specific location
 		__cpu_reg.pc += op.size;
 
 	// 7. set to registers Z & N
