@@ -77,10 +77,53 @@ uint8_t write_apu_io_log(uint8_t value, uint32_t addr) {
 
   if (addr >= 0x4000 && addr < 0x4020) {
     debug("WRITE APU or IO registers 0x%x=%d", addr, value);
-    assert(0);
   }
   return value;
 }
+
+int serialstateptr = -1; // 0-7 bit and -1 stop
+uint8_t serialvalue = 0;
+uint8_t serialbuf[0xffff] = {0};
+uint32_t serialbufptr = 0;
+FILE *write_ptr;
+uint8_t write_apu_joy1_serial(uint8_t value, uint32_t addr) {
+
+  if (addr == 0x4016) {
+
+    if (serialstateptr >= 0 && serialstateptr < 8) {
+      // read uart data
+
+      serialvalue |= value << serialstateptr++;
+    } else if (serialstateptr == 8) {
+      assert(value == 1); // stop
+      serialstateptr = -1; // stop
+      serialbuf[serialbufptr] = serialvalue;
+
+      // TODO: not very clean to do this
+      fwrite(serialbuf + serialbufptr, 1, 1, write_ptr);
+      fflush(write_ptr);
+      serialbufptr++;
+
+    }
+    else if (value == 0)
+    {
+      serialstateptr = 0; // start
+      serialvalue = 0;
+    }
+  }
+  return value;
+}
+/***
+ *
+ * SERIAL:
+01 01 01 01 01 01 01 01  01 01 00 00 01 00 01 00  |  ................
+00 00 00 01 00 00 00 01  00 00 01 00 00 01 00 00  |  ................
+01 00 00 01 01 00 00 01  00 00 00 00 00 01 01 00  |  ................
+00 01 00 00 00 00 00 01  01 00 00 01 00 00 01 00  |  ................
+00 01 01 00 00 01 00 00  00 00 00 00 01 00 00 01  |  ................
+00 01 00 01 01 00 01 01  00 01 00 01 00 01 00 01  |  ................
+01 01 00 01 00                                    |  .....
+*/
 
 uint8_t *_prgrom = NULL;
 uint8_t _prgrom_size = 0; // in x * 16Kb
@@ -138,6 +181,9 @@ static void nes_init(struct s_ines_parsed ines) {
     __cpu_memory[i] = rawmem + i;
   }
 
+  // TODO
+  write_ptr = fopen("serial.txt", "wb"); // w for write, b for binary
+
   // PPU init
   // https://www.nesdev.org/wiki/PPU_registers#PPUSTATUS
   // 0x2002 bit 7 should equal one when the ppu is initialize
@@ -158,6 +204,8 @@ static void nes_init(struct s_ines_parsed ines) {
 
   cpu_read_on(&read_cartridge);
   cpu_write_on(&write_catridge);
+
+  cpu_write_on(&write_apu_joy1_serial);
 
   mapper0(ines);
 
