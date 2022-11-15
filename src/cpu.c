@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include "cpu.h"
@@ -940,7 +941,8 @@ int cpu_run()
 {
 
 	int debug = 0;
-	int brk = 0xe029;//0xe01e;//0xe59c;//0x0694;//0x0734;
+  char* env_brk = getenv("BRK");
+	int brk = strcmp(env_brk, "") == 0 ? 0 : strtol(env_brk, NULL, 16);
 	//int cpu_nolog_on_pc[] = {0x072f, 0x0730, 0x0731, 0x0732, -1};
 	// uint64_t t = (1000 * 1000 * 1000) / CPU_FREQ; // tick every 1ns // limit to 1Ghz
 	// const struct timespec time = {.tv_sec = CPU_FREQ == 1 ? 1 : 0, .tv_nsec = CPU_FREQ == 1 ? 0 : t};
@@ -954,8 +956,14 @@ int cpu_run()
 
 		// TODO: create a dedicated debugger function
 		// And replace debug log with the name of instruction and value
-		if (__cpu_reg.pc == brk)
+		if (__cpu_reg.pc == brk) {
+
+      if (strcmp(getenv("ASSERT_PC"), "1") == 0) {
+        quit = 2;
+        break;
+      }
 			debug = 1;
+    }
 
 		int i = 0;
 		int flag = 0;

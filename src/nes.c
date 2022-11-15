@@ -236,8 +236,9 @@ void nes(struct s_ines_parsed ines) {
   nes_init(ines);
   cpu_init();
 
-  cpu_run();
+  int quit = cpu_run();
 
+  exit(quit);
 }
 
 /**

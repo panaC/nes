@@ -1,0 +1,7 @@
+name: test-run-cpu_dummy_reads_pc-assert
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: ./test.sh
