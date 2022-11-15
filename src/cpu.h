@@ -85,8 +85,7 @@ readwritefn cpu_write_on(readwritefn fn);
 void cpu_init();
 void cpu_irq();
 int cpu_run();
-int cpu_exec(t_mem *memory, t_registers *reg);
-void run(t_mem *memory, size_t size, t_registers *reg);
+int cpu_exec();
 void cpu_listing();
 
 uint8_t cpu_readbus(uint32_t addr);
@@ -95,8 +94,5 @@ void cpu_writebus(uint32_t addr, uint8_t value);
 
 // global static
 struct instruction _op[0xff];
-
-// global extern var
-extern t_mem __cpu_memory[MEM_SIZE];
 
 #endif

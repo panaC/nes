@@ -9,6 +9,24 @@
 
 #define debug(...) log_x(LOG_NES, __VA_ARGS__)
 
+uint8_t __nes_ram[0x800] = {0};
+uint8_t write_000_7ff(uint8_t value, uint32_t addr) {
+
+  if (addr >= 0 && addr < 0x700) {
+    __nes_ram[addr] = value;
+  }
+
+  return value;
+}
+
+uint8_t read_000_7ff(uint8_t value, uint32_t addr) {
+
+  if (addr >= 0 && addr < 0x800) {
+    return __nes_ram[addr];
+  }
+  return value;
+}
+
 uint8_t write_mirror_000_7ff(uint8_t value, uint32_t addr) {
 
   if (addr >= 0 && addr < 0x700) {
@@ -43,11 +61,12 @@ uint8_t write_ppu_register_log(uint8_t value, uint32_t addr) {
   return value;
 }
 
+int readingstatusregisteronce = 0;
 uint8_t read_ppu_register_log(uint8_t value, uint32_t addr) {
 
   if (addr >= 0x2000 && addr < 0x2008) {
+    value = __ppu[addr - 0x2000];
     debug("READ PPU REGISTER 0x%x=%d", addr, value);
-    return __ppu[addr - 0x2000];
   }
 
   return value;
@@ -177,9 +196,6 @@ static void nes_init(struct s_ines_parsed ines) {
   uint32_t size = 0x800; // 2kb internal memory
   uint8_t *rawmem = (uint8_t *)malloc(size);
   bzero(rawmem, size);
-  for (int i = 0; i < size; i++) {
-    __cpu_memory[i] = rawmem + i;
-  }
 
   // TODO
   write_ptr = fopen("serial.txt", "wb"); // w for write, b for binary
@@ -192,6 +208,9 @@ static void nes_init(struct s_ines_parsed ines) {
 
   cpu_read_on(&assert_memory);
   cpu_write_on(&assert_memory);
+
+  cpu_read_on(&read_000_7ff);
+  cpu_write_on(&write_000_7ff);
 
   cpu_read_on(&read_mirror_000_7ff);
   cpu_write_on(&write_mirror_000_7ff);
@@ -220,3 +239,48 @@ void nes(struct s_ines_parsed ines) {
   cpu_run();
 
 }
+
+/**
+ * clock rate
+ * 
+ * https://www.nesdev.org/wiki/Cycle_reference_chart#Clock_rates
+ * 
+ * For NTSC (2C02)
+ * 
+ * Master clock speed:
+ * 21.477272 MHz ± 40 Hz
+ * 236.25 MHz ÷ 11 by definition
+ * 
+ * cpu clock:
+ * 21.47~ MHz ÷ 12 = 1.789773 MHz
+ * 
+ * ppu clock:
+ * 21.477272 MHz ÷ 4
+ * = 5.369318 MHz
+ * 
+ * ppu tick 1/f = 186.24ns
+ * cpu tick 1/f = 558.73ns
+ * 
+ * 
+ * ppu tick is not important because we use the sdl lib to rendering.
+ * The master clock remains the cpu one at 1.789Mhz.
+ * 
+ * To render a frame it needs 89341.5 ÷ 3 = 29780.5 cpu cycles
+ * 
+ */
+
+/**
+ *
+ * Threading
+ *
+ * in nes system there are 2 logic chip the cpu and the gpu (ppu)
+ * the cpu triggers the gpu 
+ *
+ * cpu threading is important to halt the cpu loop in debugging
+ * ppu threading is necessary to catch event from cpu bus 
+ * The PPU exposes eight memory-mapped registers to the CPU $2000 to $2007
+ *
+ * 
+ *
+ * */
+

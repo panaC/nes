@@ -119,6 +119,11 @@ uint8_t bus_write_2xx_screen(uint8_t value, uint32_t addr) {
 
 void snake_init() {
 
+  /*
+   *
+   * TODO Fix snake
+   *
+   *
   uint8_t *rawmem = (uint8_t *)malloc(MEM_SIZE);
   bzero(rawmem, MEM_SIZE);
   for (int i = 0; i < MEM_SIZE; i++) {
@@ -133,6 +138,8 @@ void snake_init() {
 
   *__cpu_memory[0xfffc] = resetVector.lsb;
   *__cpu_memory[0xfffd] = resetVector.msb;
+
+  */
 
   // hexdump(*(__cpu_memory + START), 320);
 

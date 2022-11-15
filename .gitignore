@@ -39,3 +39,8 @@ nes
 
 include
 .vscode
+
+#serial
+serial.txt
+
+.DS_Store

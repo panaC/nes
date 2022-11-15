@@ -19,8 +19,10 @@ int __no_debug = true;
  * IRQ/BRK	-> LSB:0xFFFE - MSB:0xFFFF
  */
 
-// extern global var
-t_mem __cpu_memory[MEM_SIZE] = {0};
+// TODO
+// nes init -> set callback => so init can be made in thread arg instead during cpu thread runtime ..
+// in this case no mutex needed 
+// set callback in init cpu 
 
 readwritefn __bus_read_on_array[CPU_EVENT_BUS_FN_SIZE] = {NULL};
 size_t __bus_read_on_size = 0;
@@ -66,18 +68,14 @@ static uint8_t readbus(uint32_t addr) {
 	if (loop > 10) assert(0);
 
   uint8_t value = 0;
-	if (__cpu_memory[addr]) {
-		value = *__cpu_memory[addr];
-	} else {
-		for (int i = 0; i < __bus_read_on_size; i++) {
-			value = __bus_read_on_array[i](value, addr);
-		}
-	}
+  for (int i = 0; i < __bus_read_on_size; i++) {
+    value = __bus_read_on_array[i](value, addr);
+  }
 
-	loop = 0;
-	if (!__no_debug)
-		debug("READ=0x%x VALUE=%d/%d/0x%x", addr, value, (int8_t)value, value);
-	return value;
+  loop = 0;
+  if (!__no_debug)
+    debug("READ=0x%x VALUE=%d/%d/0x%x", addr, value, (int8_t)value, value);
+  return value;
 }
 uint8_t cpu_readbus(uint32_t addr) {
 	return readbus(addr);
@@ -115,8 +113,6 @@ static void writebus(uint32_t addr, uint8_t value) {
 
 	loop = 0;
   debug("WRITE=0x%x VALUE=%d/%d", addr, value, (int8_t)value);
-	if (__cpu_memory[addr])
-		*__cpu_memory[addr] = value;
 }
 void cpu_writebus(uint32_t addr, uint8_t value) {
 	return writebus(addr, value);
@@ -910,7 +906,7 @@ void reset(t_registers *reg, t_mem *memory)
 	// TODO
 }
 
-int cpu_exec(t_mem *memory, t_registers *reg)
+int cpu_exec()
 {
 
 	static int pipeline_flag_ready = 1;
@@ -918,7 +914,7 @@ int cpu_exec(t_mem *memory, t_registers *reg)
 
 	// 1. read op
 	if (pipeline_flag_ready)
-		op = readbus(reg->pc);
+		op = readbus(__cpu_reg.pc);
 
 #ifdef DEBUG_CPU
 	if (op == 0)
@@ -943,8 +939,8 @@ int cpu_exec(t_mem *memory, t_registers *reg)
 int cpu_run()
 {
 
-	int debug = 1;
-	int brk = 0;//0xe59c;//0x0694;//0x0734;
+	int debug = 0;
+	int brk = 0xe029;//0xe01e;//0xe59c;//0x0694;//0x0734;
 	//int cpu_nolog_on_pc[] = {0x072f, 0x0730, 0x0731, 0x0732, -1};
 	// uint64_t t = (1000 * 1000 * 1000) / CPU_FREQ; // tick every 1ns // limit to 1Ghz
 	// const struct timespec time = {.tv_sec = CPU_FREQ == 1 ? 1 : 0, .tv_nsec = CPU_FREQ == 1 ? 0 : t};
@@ -982,7 +978,6 @@ int cpu_run()
 			int c = getchar();
 			if (c == 'p')
 			{
-				// hexdumpSnake(*(__cpu_memory + 0x200), 1024);
 				continue;
 			}
 			else if (c == 'r')
@@ -991,26 +986,16 @@ int cpu_run()
 				continue;
 			}
 			// lf 10
-			state = cpu_exec(__cpu_memory, &__cpu_reg);
+			state = cpu_exec();
 			quit = state == -1;
 			continue;
 		}
 
 		// const int sleep = nanosleep(&time, NULL);
-		state = cpu_exec(__cpu_memory, &__cpu_reg);
+		state = cpu_exec();
 		quit = state == -1;
 	}
 
 	return quit;
 }
 
-// used in test
-void run(t_mem *memory, size_t size, t_registers *reg)
-{
-
-	debug("RUN 6502 with a memory of %zu octets", size);
-
-	while (cpu_exec(memory, reg) != 0)
-	{
-	}
-}

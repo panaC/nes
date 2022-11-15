@@ -1,0 +1,55 @@
+
+Tue Nov 15 15:26:34 CET 2022
+
+comment faire pour acceder à la mémoire du cpu ? 
+
+actuellement il y un tableau de 64KB de char*, dans nes.c il y a 2kb de mémoire instanciés, pas de callback c'est le fallback de la cascade de callback
+l'idée est de garder que des callback et aucun tableau de ptr, retire 64kb de mémoire utilisé.
+Le cpu écrit dans writebus qui est une boucle for d'appel de callback.
+si aucun callback ne répond, pas d'action et retourne une 'random' value. Cela me parait bon et cohérent avec la réalité
+
+Les étapes sont :
+- supprimer les premiers tests unitaire mise en place mais inutile maintenant.
+- ajouter un mutex autour du tableau de callback write/read
+- supprimer la variable globale __cpu_memory
+- ne pas ajouter la variable global __cpu_reg dans le .h , local à cpu.c
+- 
+
+
+utilisation des threads dans la sdl:
+-> pourquoi la sdl comporte des helpers sur pthread, est-ce pour simplifier ou a un réel impact sur la sdl ? 
+  https://discourse.libsdl.org/t/sdl-thread-vs-std-thread/23558/2 -> multi-plateforme ? So keep sdl_thread, but how to include it in cpu.c and keep this file not attached to any lib ? 
+
+
+dans nes.c : implementation des 2 threads
+
+init:  
+- lancement des 2threads : cpu_run et ppu_run
+
+ces 2 threads doivent inclures condition_variable https://www.cs.cmu.edu/afs/cs/academic/class/15492-f07/www/pthreads.html
+
+la fonction de callback vers le ppu (8regs) doit inclure  ` pthread_cond_signal( &condition_cond ); `
+
+et dans le ppu boucle avec attente sur `pthread_cond_wait( &condition_cond, &condition_mutex );`
+
+quand le ppu obtient le green light : il faut ce cadencer sur le tick cpu --> https://www.nesdev.org/wiki/Cycle_reference_chart#CPU_cycle_counts
+
+comment cadencer les 2 threads ? : le cpu est maitre !
+dans ce cas: le timing doit être fait a parir du cpu:
+  - utilisation de time pour connaitre le temps d'execution de la boucle soustrait avec le temps d'un cycle,
+  WARNING si le tour d'une boucle mets plus de temps que le temps d'un tick
+  - comment envoyer l'information vers le second thread (ppu)  ?
+    - incrémentation d'une variable globale read-only dans le ppu, avec le nombre de cycle depuis t=0, comment faire pour l'overflow? 
+    - ajouter une seconde variable globle qui est le toggle 0-ff, correspond au tick ? est-ce utile
+    - 2nd idée : ajouter une variable globale cycle incrémenté par le cpu et reset par le ppu lors de l'affichage d'une frame (29780.5 cycles)
+      - comment notifier le ppu de ce tick ? une 2eme condition variable ?
+
+
+communication entre le ppu et le cpu: 
+
+READ:
+1/ le cpu demande 'read' un des 8 registres, lance la boucle de callback
+2/ le callback implementé dans nes.c signal la condition variable vers le thread ppu
+3/ le signal est de type 'wakeup' et ne contient pas de payload .. attention comment continuer la boucle d'affichage si bloqué sur le wait de la condition variable cpu ??
+3-1/ Il vaut mieux cadencer le ppu avec le tick cpu donc pas de condition variable, comment partager la demande d'info registers !?
+4/ 
