@@ -4,4 +4,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - run: ./test.sh
+      - uses: actions/checkout@v2
+      - name: Run test
+        run: ./test.sh
+
