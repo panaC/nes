@@ -1,5 +1,5 @@
 name: test-run-cpu_dummy_reads_pc-assert
-on: [push]
+on: []
 jobs:
   test:
     runs-on: ubuntu-latest
