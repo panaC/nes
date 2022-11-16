@@ -84,7 +84,7 @@ readwritefn cpu_write_on(readwritefn fn);
 
 void cpu_init();
 void cpu_irq();
-int cpu_run();
+int cpu_run(void (*waitFn)());
 int cpu_exec();
 void cpu_listing();
 
@@ -97,6 +97,7 @@ struct instruction _op[0xff];
 
 struct s_cpu_thread_arg {
   int *return_value;
+  void (*waitFunction)();
 };
 void *cpu_thread(void *arg);
 

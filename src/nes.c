@@ -7,6 +7,7 @@
 #include "cpu.h"
 #include "parser.h"
 #include "utils.h"
+#include "clock.h"
 
 #define debug(...) log_x(LOG_NES, __VA_ARGS__)
 
@@ -231,21 +232,48 @@ static void nes_init(struct s_ines_parsed ines) {
 
 }
 
-// main entry
-int nes(struct s_ines_parsed ines) {
+struct timespec tstart={0,0}, tend={0,0};
 
-  pthread_t thread_cpu_variable;
+pthread_cond_t __clock_condition_cond = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t __clock_condition_mutex = PTHREAD_MUTEX_INITIALIZER;
+void clock_wait() {
+  pthread_mutex_lock(&__clock_condition_mutex);
+  pthread_cond_wait(&__clock_condition_cond, &__clock_condition_mutex);
+  pthread_mutex_unlock(&__clock_condition_mutex);
+}
+
+// main entry
+int nes(struct s_ines_parsed ines)
+{
+
+  pthread_t thread_cpu_t;
+  pthread_t thread_clock_t;
   int cpu_thread_return_value_after_exit = 0;
+  int cpu_clock_return_value_after_exit = 0;
 
   nes_init(ines);
 
   int cpu_return_value = -1;
-  struct s_cpu_thread_arg cpu_arg = {.return_value = &cpu_return_value};
+  struct s_cpu_thread_arg cpu_arg = {
+    .return_value = &cpu_return_value,
+    .waitFunction = &clock_wait};
 
   cpu_thread_return_value_after_exit =
-      pthread_create(&thread_cpu_variable, NULL, &cpu_thread, (void *)&cpu_arg);
+      pthread_create(&thread_cpu_t, NULL, &cpu_thread, (void *)&cpu_arg);
 
-  pthread_join(thread_cpu_variable, NULL);
+  struct s_clock_thread_arg clock_arg = {
+    .condition_cond = &__clock_condition_cond,
+    .condition_mutex = &__clock_condition_mutex};
+
+  cpu_clock_return_value_after_exit =
+    pthread_create(&thread_clock_t, NULL, &clock_thread, (void*)&clock_arg);
+
+  while (true) {
+    clock_wait();
+    debug("CLOCK!!!!");
+  }
+
+  // pthread_join(thread_cpu_variable, NULL);
 
   return *cpu_arg.return_value;
 }

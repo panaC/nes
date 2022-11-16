@@ -940,7 +940,7 @@ int cpu_exec()
 	return pipeline_flag_ready;
 }
 
-int cpu_run()
+int cpu_run(void (*waitFn)())
 {
 	int debug = 0;
   char* env_brk = getenv("BRK");
@@ -978,7 +978,7 @@ int cpu_run()
 			continue;
 		}
 
-		// const int sleep = nanosleep(&time, NULL);
+		waitFn();
 		state = cpu_exec();
 		quit = state == -1;
 	}
@@ -993,7 +993,7 @@ void *cpu_thread(void *arg) {
 	// init cpu inside thread !?
 	cpu_init();
 
-	int state = cpu_run();
+	int state = cpu_run(cpu_arg->waitFunction);
 
 	*cpu_arg->return_value = state;
 
