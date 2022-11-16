@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <pthread.h>
 #include <strings.h>
 #include <assert.h>
 #include "nes.h"
@@ -231,14 +232,22 @@ static void nes_init(struct s_ines_parsed ines) {
 }
 
 // main entry
-void nes(struct s_ines_parsed ines) {
+int nes(struct s_ines_parsed ines) {
+
+  pthread_t thread_cpu_variable;
+  int cpu_thread_return_value_after_exit = 0;
 
   nes_init(ines);
-  cpu_init();
 
-  int quit = cpu_run();
+  int cpu_return_value = -1;
+  struct s_cpu_thread_arg cpu_arg = {.return_value = &cpu_return_value};
 
-  exit(quit);
+  cpu_thread_return_value_after_exit =
+      pthread_create(&thread_cpu_variable, NULL, &cpu_thread, (void *)&cpu_arg);
+
+  pthread_join(thread_cpu_variable, NULL);
+
+  return *cpu_arg.return_value;
 }
 
 /**

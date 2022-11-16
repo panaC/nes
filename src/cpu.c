@@ -986,3 +986,16 @@ int cpu_run()
 	return quit;
 }
 
+void *cpu_thread(void *arg) {
+
+	struct s_cpu_thread_arg *cpu_arg = arg;
+
+	// init cpu inside thread !?
+	cpu_init();
+
+	int state = cpu_run();
+
+	*cpu_arg->return_value = state;
+
+	return NULL;
+}

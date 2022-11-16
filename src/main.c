@@ -27,9 +27,9 @@ int main(int argc, char **argv) {
   }
 
   // snake();
-  nes(*ines);
+  int quit = nes(*ines);
   free(ines);
 
-  return 0;
+  return quit;
 }
 

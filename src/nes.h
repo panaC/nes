@@ -3,6 +3,6 @@
 
 #include "parser.h"
 
-void nes(struct s_ines_parsed ines);
+int nes(struct s_ines_parsed ines);
 
 #endif

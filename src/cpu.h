@@ -95,4 +95,9 @@ void cpu_writebus(uint32_t addr, uint8_t value);
 // global static
 struct instruction _op[0xff];
 
+struct s_cpu_thread_arg {
+  int *return_value;
+};
+void *cpu_thread(void *arg);
+
 #endif
