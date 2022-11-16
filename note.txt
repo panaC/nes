@@ -1,5 +1,4 @@
 
-Tue Nov 15 15:26:34 CET 2022
 
 comment faire pour acceder à la mémoire du cpu ? 
 
@@ -53,3 +52,32 @@ READ:
 3/ le signal est de type 'wakeup' et ne contient pas de payload .. attention comment continuer la boucle d'affichage si bloqué sur le wait de la condition variable cpu ??
 3-1/ Il vaut mieux cadencer le ppu avec le tick cpu donc pas de condition variable, comment partager la demande d'info registers !?
 4/ 
+
+
+---
+update - idée
+
+ce n'est pas le cpu qui cadence le systeme mais une horloge externe
+
+pthread condition variable peut-etre utilisé dans le main process 
+est-ce toujours utile de garder un thread pour le ppu je ne pense pas !
+l'idée est de garder qu'un seul thread cpu 
+pour la communication avec le ppu ?:
+- comme actuellement un array de 8 values avec notification quand read/write
+  - comment fonctionne la notif ?
+  le ppu vas tourner dans la boucle du main process 
+
+
+
+Prochaine étape: 
+
+1/ ajouter les callback read/writre a partir du init et pas pendant le runtime du cpu --UPDATE-- cancel
+1-2/ permet de ne pas avoir de tableau globale
+2/ clean le cpu_exec
+3/ faire une function cpu_thread
+4/ créer la clock globale dans la boucle inf
+4-2/ comment faire pour etre certain d'avoir toujours le bon top ?
+4-3/ calculer le temps passé depuis le dernier top et ajouter un usleep de t-n useconde
+
+
+

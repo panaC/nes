@@ -44,3 +44,7 @@ include
 serial.txt
 
 .DS_Store
+
+
+#rom
+rom/**
