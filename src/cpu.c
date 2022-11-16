@@ -20,11 +20,6 @@ int __no_debug = true;
  * IRQ/BRK	-> LSB:0xFFFE - MSB:0xFFFF
  */
 
-// TODO
-// nes init -> set callback => so init can be made in thread arg instead during cpu thread runtime ..
-// in this case no mutex needed 
-// set callback in init cpu 
-
 readwritefn __bus_read_on_array[CPU_EVENT_BUS_FN_SIZE] = {NULL};
 size_t __bus_read_on_size = 0;
 readwritefn __bus_write_on_array[CPU_EVENT_BUS_FN_SIZE] = {NULL};
@@ -40,6 +35,14 @@ t_registers __cpu_reg = {
 	.x = 0,
 	.y = 0};
 
+
+/**
+ *
+ * these 2 function are called from main process or whatever
+ * but not from the cpu thread
+ * so no need to mutex __bus_read_on_array !?
+ * 
+ */ 
 readwritefn cpu_read_on(readwritefn fn) {
   if (!fn) return NULL;
   for (int i = 0; i < __bus_read_on_size; i++) {
@@ -880,7 +883,7 @@ void cpu_init()
 	__cpu_reg.a = __cpu_reg.x = __cpu_reg.y = 0;
 	__cpu_reg.p.value = 0x34;
 	__cpu_reg.sp = 0xfd;
-	writebus(0x4017, 0);
+	writebus(0x4017, 0); // Warning writebus whereas the cpu is not started yet ! TODO: check the behaviour
 	writebus(0x4015, 0);
 	for (int i = 0; i <= 0xf; i++)
 		writebus(0x4000 + i, 16);
@@ -910,7 +913,7 @@ void reset(t_registers *reg, t_mem *memory)
 int cpu_exec()
 {
 
-	static int pipeline_flag_ready = 1;
+	static int pipeline_flag_ready = true;
 	static uint8_t op = 0;
 
 	// 1. read op
@@ -922,7 +925,7 @@ int cpu_exec()
 	{
 		// break;
 		debug("DEBUG_CPU BREAK");
-		pipeline_flag_ready = 1;
+		pipeline_flag_ready = true;
 		return -1;
 	}
 #endif
@@ -939,23 +942,15 @@ int cpu_exec()
 
 int cpu_run()
 {
-
 	int debug = 0;
   char* env_brk = getenv("BRK");
 	int brk = strcmp(env_brk, "") == 0 ? 0 : strtol(env_brk, NULL, 16);
-	//int cpu_nolog_on_pc[] = {0x072f, 0x0730, 0x0731, 0x0732, -1};
-	// uint64_t t = (1000 * 1000 * 1000) / CPU_FREQ; // tick every 1ns // limit to 1Ghz
-	// const struct timespec time = {.tv_sec = CPU_FREQ == 1 ? 1 : 0, .tv_nsec = CPU_FREQ == 1 ? 0 : t};
 	int quit = 0;
 	int state = 0;
-	// int log_cpu_set = !!(log_get_level_bin() | LOG_CPU | LOG_REGISTER | LOG_BUS);
+
 	while (!quit)
 	{
 
-		// while((*(char*)pause) == 1);
-
-		// TODO: create a dedicated debugger function
-		// And replace debug log with the name of instruction and value
 		if (__cpu_reg.pc == brk) {
 
       if (strcmp(getenv("ASSERT_PC"), "1") == 0) {
@@ -967,35 +962,19 @@ int cpu_run()
 
 		int i = 0;
 		int flag = 0;
-		// if (log_cpu_set) {
-		// 	log_set_level_bin(log_get_level_bin() | LOG_CPU | LOG_REGISTER | LOG_BUS);
-		// }
-		// while(cpu_nolog_on_pc[i] != -1) {
-		// 	if (cpu_nolog_on_pc[i] == __cpu_reg.pc) {
-		// 		log_set_level_bin(log_get_level_bin() & ~(LOG_CPU | LOG_REGISTER | LOG_BUS)); // unset log_cpu
-		// 		flag = true;
-		// 		break;
-		// 	}
-		// 	i++;
-		// }
 		if (debug)
 		{
 			putchar('>');
 			putchar(' ');
 			fflush(stdout);
 			int c = getchar();
-			if (c == 'p')
-			{
-				continue;
-			}
-			else if (c == 'r')
-			{
+			if (c == 'r') {
 				debug = 0;
 				continue;
 			}
 			// lf 10
 			state = cpu_exec();
-			quit = state == -1;
+			quit = state == true;
 			continue;
 		}
 
