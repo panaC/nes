@@ -69,6 +69,8 @@ pour la communication avec le ppu ?:
 
 
 
+
+
 Prochaine étape: 
 
 1/ ajouter les callback read/writre a partir du init et pas pendant le runtime du cpu --UPDATE-- cancel
@@ -78,6 +80,23 @@ Prochaine étape:
 4/ créer la clock globale dans la boucle inf
 4-2/ comment faire pour etre certain d'avoir toujours le bon top ?
 4-3/ calculer le temps passé depuis le dernier top et ajouter un usleep de t-n useconde
+
+
+
+Wed Nov 16 11:01:43 CET 2022
+
+
+update previous comment
+pas possible d'ajouter qu'un seul thread cpu car le main process est occupée avec la boucle sdl (delay avec 60fps)
+l'idée est d'ajouter plusieurs thread ou d'ajouter une machine à état comme sur microcontrolleur avec une seule boucle et un timer
+
+est-ce nécessaire d'imposer un delay dans la boucle principale ? pas forcément car c'est le ppu qui cadence le rendu suivant la clock maitre
+
+le thread cpu est forcément nécessaire pour "arreter" le cpu (deboguage)
+car la sdl ne permet pas de bloquer le process.
+La raison pour savoir si un thread sur le ppu est nécessaire, concerne plus si le déboguage du ppu est nécessaire. Par le déboguage je pense à executer step by step le ppu.
+
+
 
 
 
