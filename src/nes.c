@@ -254,9 +254,11 @@ int nes(struct s_ines_parsed ines)
   nes_init(ines);
 
   int cpu_return_value = -1;
+  int cpu_state = -1;
   struct s_cpu_thread_arg cpu_arg = {
     .return_value = &cpu_return_value,
-    .waitFunction = &clock_wait};
+    .waitFunction = &clock_wait,
+    .cpu_state = &cpu_state};
 
   cpu_thread_return_value_after_exit =
       pthread_create(&thread_cpu_t, NULL, &cpu_thread, (void *)&cpu_arg);
@@ -270,12 +272,15 @@ int nes(struct s_ines_parsed ines)
 
   while (true) {
     clock_wait();
-    debug("CLOCK!!!!");
+    // debug("CLOCK!!!!");
+
+    if (cpu_state == 0) {
+      break;
+    }
   }
 
-  // pthread_join(thread_cpu_variable, NULL);
-
-  return *cpu_arg.return_value;
+  debug("QUIT with %d", cpu_return_value);
+  return cpu_return_value;
 }
 
 /**

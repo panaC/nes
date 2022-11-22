@@ -98,6 +98,7 @@ struct instruction _op[0xff];
 struct s_cpu_thread_arg {
   int *return_value;
   void (*waitFunction)();
+  int *cpu_state;
 };
 void *cpu_thread(void *arg);
 

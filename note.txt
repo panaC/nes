@@ -98,5 +98,18 @@ La raison pour savoir si un thread sur le ppu est nécessaire, concerne plus si 
 
 
 
+-----
+
+ajout d'un thread clock
+qui cadence le systeme
+clock réglé avec une période de 558ns soit la fréquence du cpu
+
+Beaucoup d'instructions prennent plus que ces 558ns à s'éxécuter même débug désactivé
+Les étapes pour réussir à toujours être dans cette fenetre ?
+- Réduire le nombre d'appel de function
+- Réduire le nombre de callback dans read/write (possiblement supprimer l'option callback)
+- vérifier ce qui prends du temps et optimiser l'algo pour une instructions
+  - L'algo de l'instruction est éxectuter sur le dernier cycle et non durant le temps d'execution de l'instruction
+
 
 

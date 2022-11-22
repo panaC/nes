@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,7 +8,11 @@
 #include "debug.h"
 #include "log.h"
 
-#define debug(...) log_x(LOG_CPU, __VA_ARGS__)
+void nopdebug(int v, ...) {
+}
+
+//#define debug(...) log_x(LOG_CPU, __VA_ARGS__)
+#define debug(...) nopdebug(0, __VA_ARGS__);
 
 int __no_debug = true;
 
@@ -948,6 +953,11 @@ int cpu_run(void (*waitFn)())
 	int quit = 0;
 	int state = 0;
 
+  struct timespec tstart={0,0}, tend={0,0};
+  uint64_t timediff = 0;
+  const uint64_t t = (1000 * 1000 * 1000) / CPU_FREQ;
+  debug("T2=%ld", t);
+
 	while (!quit)
 	{
 
@@ -979,7 +989,16 @@ int cpu_run(void (*waitFn)())
 		}
 
 		waitFn();
+    tstart.tv_nsec = 0;
+    tend.tv_nsec = 0;
+    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &tstart);
 		state = cpu_exec();
+    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &tend);
+    timediff = tend.tv_nsec - tstart.tv_nsec;
+    // assert(timediff < t);
+    if (timediff > t) {
+      printf("[%s]TIME=%ldus >? %ldus\n", _op[readbus(__cpu_reg.pc)].str, timediff, t);
+    }
 		quit = state == -1;
 	}
 
@@ -992,10 +1011,12 @@ void *cpu_thread(void *arg) {
 
 	// init cpu inside thread !?
 	cpu_init();
+  *cpu_arg->cpu_state = 1; //run
 
 	int state = cpu_run(cpu_arg->waitFunction);
 
 	*cpu_arg->return_value = state;
+  *cpu_arg->cpu_state = 0;
 
 	return NULL;
 }
