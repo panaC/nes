@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <strings.h>
 #include "cpu.h"
-#include "debug.h"
 #include "parser.h"
 #include "sdl.h"
 #include "snake.h"

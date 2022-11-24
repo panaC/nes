@@ -3,7 +3,6 @@
 #include "stdint.h"
 #include "utils.h"
 #include "sdl.h"
-#include "debug.h"
 #include "cpu.h"
 #include "sdl.h"
 

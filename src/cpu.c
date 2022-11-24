@@ -5,7 +5,6 @@
 #include <string.h>
 #include <time.h>
 #include "cpu.h"
-#include "debug.h"
 #include "log.h"
 
 //#define debug(...) log_x(LOG_CPU, __VA_ARGS__)
@@ -46,6 +45,8 @@ t_registers __cpu_reg = {
 	.y = 0};
 
 int __no_rw_debug = 0;
+int __debug_brk = 0;
+int __debug_assert_pc = 0;
 
 
 /**
@@ -127,7 +128,7 @@ static void writebus(uint32_t addr, uint8_t value) {
 
 	loop = 0;
 	if (!__no_rw_debug)
-		debug_content("w[0x%02x]=%02x | ", addr, value);
+		debug_content("w[0x%04x]=%02x | ", addr, value);
 }
 void cpu_writebus(uint32_t addr, uint8_t value) {
 	return writebus(addr, value);
@@ -136,10 +137,10 @@ void cpu_writebus(uint32_t addr, uint8_t value) {
 static void debug_opcode(enum e_addressMode mode, char *str, uint8_t op, union u16 arg) {
 
 	// debug_content("$%04x ", __cpu_reg.pc);
-	debug_content("a=%02x ", __cpu_reg.a & 0xff);
-	debug_content("x=%02x ", __cpu_reg.x & 0xff);
-	debug_content("y=%02x ", __cpu_reg.y & 0xff);
-	debug_content("sp=%02x ", __cpu_reg.sp & 0xff);
+	debug_content("a=%02x  ", __cpu_reg.a & 0xff);
+	debug_content("x=%02x  ", __cpu_reg.x & 0xff);
+	debug_content("y=%02x  ", __cpu_reg.y & 0xff);
+	debug_content("sp=%02x  ", __cpu_reg.sp & 0xff);
 	debug_content("%c", __cpu_reg.p.N ? 'N' : '-');
 	debug_content("%c", __cpu_reg.p.V ? 'V' : '-');
 	debug_content("-");
@@ -148,7 +149,7 @@ static void debug_opcode(enum e_addressMode mode, char *str, uint8_t op, union u
 	debug_content("%c", __cpu_reg.p.I ? 'I' : '-');
 	debug_content("%c", __cpu_reg.p.Z ? 'Z' : '-');
 	debug_content("%c", __cpu_reg.p.C ? 'C' : '-');
-	debug_content("\t| ");
+	debug_content("\t  ");
 
 	switch (mode)
 	{
@@ -849,6 +850,10 @@ struct instruction tab[] = {
 
 };
 
+/**
+ * 
+ * return boolean when instruction completed
+*/
 static int handle_op(struct instruction op) {
 
 	static int cycles_remaining = 0;
@@ -882,7 +887,7 @@ static int handle_op(struct instruction op) {
 	uint16_t pc = __cpu_reg.pc;
 	// 6. algo
 
-	__no_rw_debug = 0;
+	__no_rw_debug = 0; // enable debug r/w
 	uint16_t result = op.fn(op.mode, uarg);
 	
 	// 5. increment pc
@@ -920,6 +925,10 @@ void cpu_init()
 		writebus(0x4000 + i, 16);
 	for (int i = 0; i <= 0x3; i++)
 		writebus(0x4010 + i, 16);
+
+	char *env_brk = getenv("BRK");
+	__debug_brk = strcmp(env_brk, "") == 0 ? 0 : strtol(env_brk, NULL, 16);
+    __debug_assert_pc = strcmp(getenv("ASSERT_PC"), "1") == 0;
 }
 
 void cpu_irq()
@@ -941,17 +950,25 @@ void reset(t_registers *reg, t_mem *memory)
 	// TODO
 }
 
-int cpu_exec()
+static int cpu_pc_assert(enum e_cpu_code code) {
+
+	if (__cpu_reg.pc == __debug_brk) {
+		return __debug_assert_pc ? CPU_DEBUG_PC_ASSERT : CPU_DEBUG_PC_BREAK;
+	}
+	return code;
+}
+
+enum e_cpu_code cpu_exec()
 {
 
-	static int pipeline_flag_ready = true;
+	static enum e_cpu_code cpu_code = CPU_INSTRUCTION_COMPLETE;
 	static uint8_t op = 0;
 
 	// disable readbus on opcode parsing
 	__no_rw_debug = 1;
 
 	// 1. read op
-	if (pipeline_flag_ready)
+	if (cpu_code == CPU_INSTRUCTION_COMPLETE)
 		op = readbus(__cpu_reg.pc);
 
 #ifdef DEBUG_CPU
@@ -959,93 +976,16 @@ int cpu_exec()
 	{
 		// break;
 		debug("DEBUG_CPU BREAK");
-		pipeline_flag_ready = true;
-		return -1;
+		cpu_code = CPU_INSTRUCTION_COMPLETE;
+		return CPU_BREAK;
 	}
 #endif
 
 	// 2. handle op pipeline
-	pipeline_flag_ready = handle_op(_op[op]);
+	cpu_code = handle_op(_op[op]);
 
-	// debug("cycle=%d", cycle);
-	if (pipeline_flag_ready)
-		print_register(&__cpu_reg);
+	// 3. handle debugging
+	cpu_code = cpu_pc_assert(cpu_code);
 
-	return pipeline_flag_ready;
-}
-
-int cpu_run(void (*waitFn)())
-{
-	int debug = 0;
-  char* env_brk = getenv("BRK");
-	int brk = strcmp(env_brk, "") == 0 ? 0 : strtol(env_brk, NULL, 16);
-	int quit = 0;
-	int state = 0;
-
-  struct timespec tstart={0,0}, tend={0,0};
-  uint64_t timediff = 0;
-  const uint64_t t = (1000 * 1000 * 1000) / CPU_FREQ;
-  debug("T2=%ld", t);
-
-	while (!quit)
-	{
-
-		if (__cpu_reg.pc == brk) {
-
-      if (strcmp(getenv("ASSERT_PC"), "1") == 0) {
-        quit = 2;
-        break;
-      }
-			debug = 1;
-    }
-
-		int i = 0;
-		int flag = 0;
-		if (debug)
-		{
-			putchar('>');
-			putchar(' ');
-			fflush(stdout);
-			int c = getchar();
-			if (c == 'r') {
-				debug = 0;
-				continue;
-			}
-			// lf 10
-			state = cpu_exec();
-			quit = state == true;
-			continue;
-		}
-
-		waitFn();
-    tstart.tv_nsec = 0;
-    tend.tv_nsec = 0;
-    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &tstart);
-		state = cpu_exec();
-    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &tend);
-    timediff = tend.tv_nsec - tstart.tv_nsec;
-    // assert(timediff < t);
-    if (timediff > t) {
-    //   printf("[%s]TIME=%ldus >? %ldus\n", _op[readbus(__cpu_reg.pc)].str, timediff, t);
-    }
-		quit = state == -1;
-	}
-
-	return quit;
-}
-
-void *cpu_thread(void *arg) {
-
-	struct s_cpu_thread_arg *cpu_arg = arg;
-
-	// init cpu inside thread !?
-	cpu_init();
-  *cpu_arg->cpu_state = 1; //run
-
-	int state = cpu_run(cpu_arg->waitFunction);
-
-	*cpu_arg->return_value = state;
-  *cpu_arg->cpu_state = 0;
-
-	return NULL;
+	return cpu_code;
 }

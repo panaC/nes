@@ -11,6 +11,14 @@
 
 #define MEM_SIZE 65536 // 64KB // 2 ^16 // 65536
 
+enum e_cpu_code {
+  CPU_INSTRUCTION_IN_PROGRESS = 0,
+  CPU_INSTRUCTION_COMPLETE = 1,
+  CPU_DEBUG_PC_ASSERT = 2,
+  CPU_DEBUG_PC_BREAK = 3,
+  CPU_BREAK = 255,
+};
+
 union u_p {
 
   uint8_t value;
@@ -84,8 +92,7 @@ readwritefn cpu_write_on(readwritefn fn);
 
 void cpu_init();
 void cpu_irq();
-int cpu_run(void (*waitFn)());
-int cpu_exec();
+enum e_cpu_code cpu_exec();
 void cpu_listing();
 
 uint8_t cpu_readbus(uint32_t addr);
@@ -94,12 +101,5 @@ void cpu_writebus(uint32_t addr, uint8_t value);
 
 // global static
 struct instruction _op[0xff];
-
-struct s_cpu_thread_arg {
-  int *return_value;
-  void (*waitFunction)();
-  int *cpu_state;
-};
-void *cpu_thread(void *arg);
 
 #endif

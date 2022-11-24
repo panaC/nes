@@ -232,55 +232,20 @@ static void nes_init(struct s_ines_parsed ines) {
 
 }
 
-struct timespec tstart={0,0}, tend={0,0};
-
-pthread_cond_t __clock_condition_cond = PTHREAD_COND_INITIALIZER;
-pthread_mutex_t __clock_condition_mutex = PTHREAD_MUTEX_INITIALIZER;
-void clock_wait() {
-  pthread_mutex_lock(&__clock_condition_mutex);
-  pthread_cond_wait(&__clock_condition_cond, &__clock_condition_mutex);
-  pthread_mutex_unlock(&__clock_condition_mutex);
-}
-
 // main entry
 int nes(struct s_ines_parsed ines)
 {
-
-  pthread_t thread_cpu_t;
-  pthread_t thread_clock_t;
-  int cpu_thread_return_value_after_exit = 0;
-  int cpu_clock_return_value_after_exit = 0;
-
   nes_init(ines);
+  cpu_init();
 
-  int cpu_return_value = -1;
-  int cpu_state = -1;
-  struct s_cpu_thread_arg cpu_arg = {
-    .return_value = &cpu_return_value,
-    .waitFunction = &clock_wait,
-    .cpu_state = &cpu_state};
+  enum e_cpu_code cpu_code = 0;
 
-  cpu_thread_return_value_after_exit =
-      pthread_create(&thread_cpu_t, NULL, &cpu_thread, (void *)&cpu_arg);
-
-  struct s_clock_thread_arg clock_arg = {
-    .condition_cond = &__clock_condition_cond,
-    .condition_mutex = &__clock_condition_mutex};
-
-  cpu_clock_return_value_after_exit =
-    pthread_create(&thread_clock_t, NULL, &clock_thread, (void*)&clock_arg);
-
-  while (true) {
-    clock_wait();
-    // debug("CLOCK!!!!");
-
-    if (cpu_state == 0) {
-      break;
-    }
+  while (cpu_code <= 1) {
+    cpu_code = cpu_exec();
   }
 
-  debug("QUIT with %d", cpu_return_value);
-  return cpu_return_value;
+  debug("QUIT with %d", cpu_code);
+  return cpu_code;
 }
 
 /**
