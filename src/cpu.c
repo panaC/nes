@@ -5,11 +5,10 @@
 #include <string.h>
 #include <time.h>
 #include "cpu.h"
-#include "log.h"
 
-//#define debug(...) log_x(LOG_CPU, __VA_ARGS__)
-
-#define DEBUG_CPU 1
+#ifndef DEBUG_CPU
+#	define DEBUG_CPU 1
+#endif
 
 #ifndef DEBUG_CPU
 #	define debug(...) 0;
@@ -861,9 +860,10 @@ static int handle_op(struct instruction op) {
 
 	if (cycles_remaining > 1) {
 		cycles_remaining--;
-		return false;
+		return 0;
 	} else if (cycles_remaining == 0) {
 		// 1. read the arg in function of addressMode
+
 		uarg = read_arg(op.mode);
 
 		// 2. page crossed
@@ -875,7 +875,7 @@ static int handle_op(struct instruction op) {
 
 		// 3. cycles
 		cycles_remaining = op.cycles - 1;
-		return false;
+		return 0;
 	}
 	cycles_remaining = 0;
 
@@ -900,7 +900,7 @@ static int handle_op(struct instruction op) {
 
 
 	debug_end();
-	return true;
+	return 1;
 
 }
 

@@ -3,7 +3,7 @@
 #include <assert.h>
 #include "sdl.h"
 
-#define debug(...) log_x(LOG_SDL, __VA_ARGS__)
+#define debug(...) 0;
 
 // global variable
 SDL_Window *__win = NULL;

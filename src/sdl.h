@@ -2,7 +2,6 @@
 #define SDL_H
 
 #include <SDL2/SDL.h>
-#include "log.h"
 
 void sdl_init(int w, int h);
 void sdl_quit();

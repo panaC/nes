@@ -5,9 +5,19 @@
 #include <errno.h>  
 #include <sys/mman.h>
 #include "parser.h"
-#include "log.h"
 
-#define debug(...) log_x(LOG_PARSER, __VA_ARGS__)
+#ifndef DEBUG_PARSER
+# define DEBUG_PARSER 1
+#endif
+
+#ifndef DEBUG_PARSER
+#	define debug(...) 0;
+#else
+#	define debug_start() fprintf(stdout, "PARSER: ");
+#	define debug_content(...) fprintf(stdout, __VA_ARGS__);
+#	define debug_end() fprintf(stdout, "\n");
+#	define debug(...) debug_start();debug_content(__VA_ARGS__);debug_end();
+#endif
 
 struct s_ines_parsed* parse(char* filepath) {
 

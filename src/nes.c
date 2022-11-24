@@ -1,15 +1,26 @@
 #include <stdlib.h>
-#include <pthread.h>
+#include <stdio.h>
+#include <stdint.h>
 #include <strings.h>
 #include <assert.h>
 #include "nes.h"
-#include "log.h"
 #include "cpu.h"
 #include "parser.h"
 #include "utils.h"
 #include "clock.h"
 
-#define debug(...) log_x(LOG_NES, __VA_ARGS__)
+#ifndef DEBUG_NES
+#	define DEBUG_NES 1
+#endif
+
+#ifndef DEBUG_NES
+#	define debug(...) 0;
+#else
+#	define debug_start() fprintf(stdout, "NES: ");
+#	define debug_content(...) fprintf(stdout, __VA_ARGS__);
+#	define debug_end() fprintf(stdout, "\n");
+#	define debug(...) debug_start();debug_content(__VA_ARGS__);debug_end();
+#endif
 
 uint8_t __nes_ram[0x800] = {0};
 uint8_t write_000_7ff(uint8_t value, uint32_t addr) {
@@ -57,7 +68,7 @@ uint8_t __ppu[9] = {0};
 uint8_t write_ppu_register_log(uint8_t value, uint32_t addr) {
 
   if (addr >= 0x2000 && addr < 0x2008) {
-    debug("WRITE PPU REGISTER 0x%x=%d", addr, value);
+    debug_content("wPPU[0x%04x]=0x%2x | ", addr, value);
     __ppu[addr - 0x2000] = value;
   }
   return value;
@@ -68,7 +79,7 @@ uint8_t read_ppu_register_log(uint8_t value, uint32_t addr) {
 
   if (addr >= 0x2000 && addr < 0x2008) {
     value = __ppu[addr - 0x2000];
-    debug("READ PPU REGISTER 0x%x=%d", addr, value);
+    debug_content("rPPU[0x%04x]=0x%02x | ", addr, value);
   }
 
   return value;
@@ -240,8 +251,9 @@ int nes(struct s_ines_parsed ines)
 
   enum e_cpu_code cpu_code = 0;
 
-  while (cpu_code <= 1) {
+  for (;;) {
     cpu_code = cpu_exec();
+    if (cpu_code > 1) break;
   }
 
   debug("QUIT with %d", cpu_code);
