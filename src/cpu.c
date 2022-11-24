@@ -8,13 +8,18 @@
 #include "debug.h"
 #include "log.h"
 
-void nopdebug(int v, ...) {
-}
-
 //#define debug(...) log_x(LOG_CPU, __VA_ARGS__)
-#define debug(...) nopdebug(0, __VA_ARGS__);
 
-int __no_debug = true;
+#define DEBUG_CPU 1
+
+#ifndef DEBUG_CPU
+#	define debug(...) 0;
+#else
+#	define debug_start() fprintf(stdout, "CPU: ");
+#	define debug_content(...) fprintf(stdout, __VA_ARGS__);
+#	define debug_end() fprintf(stdout, "\n");
+#	define debug(...) debug_start();debug_content(__VA_ARGS__);debug_end();
+#endif
 
 /**
  * 6502 it vector
@@ -39,6 +44,8 @@ t_registers __cpu_reg = {
 	.a = 0,
 	.x = 0,
 	.y = 0};
+
+int __no_rw_debug = 0;
 
 
 /**
@@ -82,8 +89,8 @@ static uint8_t readbus(uint32_t addr) {
   }
 
   loop = 0;
-  if (!__no_debug)
-    debug("READ=0x%x VALUE=%d/%d/0x%x", addr, value, (int8_t)value, value);
+  if (!__no_rw_debug)
+    debug_content("r[0x%04x]=0x%02x | ", addr, value);
   return value;
 }
 uint8_t cpu_readbus(uint32_t addr) {
@@ -91,12 +98,10 @@ uint8_t cpu_readbus(uint32_t addr) {
 }
 
 static union u16 readbus16(uint32_t addr) {
-
-	__no_debug = true;
-  union u16 v = {.lsb = readbus(addr), .msb = readbus(addr + 1)};
-	__no_debug = false;
-  debug("READ16=0x%x VALUE=0x%x", addr, v.value);
-  return v;
+	union u16 v = {.lsb = readbus(addr), .msb = readbus(addr + 1)};
+	if (!__no_rw_debug)
+		debug_content("r16[0x%04x]=0x%04x | ", addr, v.value);
+	return v;
 }
 union u16 cpu_readbus16(uint32_t addr) {
 	return readbus16(addr);
@@ -121,7 +126,8 @@ static void writebus(uint32_t addr, uint8_t value) {
   }
 
 	loop = 0;
-  debug("WRITE=0x%x VALUE=%d/%d", addr, value, (int8_t)value);
+	if (!__no_rw_debug)
+		debug_content("w[0x%02x]=%02x | ", addr, value);
 }
 void cpu_writebus(uint32_t addr, uint8_t value) {
 	return writebus(addr, value);
@@ -129,46 +135,61 @@ void cpu_writebus(uint32_t addr, uint8_t value) {
 
 static void debug_opcode(enum e_addressMode mode, char *str, uint8_t op, union u16 arg) {
 
+	// debug_content("$%04x ", __cpu_reg.pc);
+	debug_content("a=%02x ", __cpu_reg.a & 0xff);
+	debug_content("x=%02x ", __cpu_reg.x & 0xff);
+	debug_content("y=%02x ", __cpu_reg.y & 0xff);
+	debug_content("sp=%02x ", __cpu_reg.sp & 0xff);
+	debug_content("%c", __cpu_reg.p.N ? 'N' : '-');
+	debug_content("%c", __cpu_reg.p.V ? 'V' : '-');
+	debug_content("-");
+	debug_content("%c", __cpu_reg.p.B ? 'B' : '-');
+	debug_content("%c", __cpu_reg.p.D ? 'D' : '-');
+	debug_content("%c", __cpu_reg.p.I ? 'I' : '-');
+	debug_content("%c", __cpu_reg.p.Z ? 'Z' : '-');
+	debug_content("%c", __cpu_reg.p.C ? 'C' : '-');
+	debug_content("\t| ");
+
 	switch (mode)
 	{
 	case ACCUMULATOR:
-		debug("$%04x    %02x           %s", __cpu_reg.pc, op, str);
+		debug_content("$%04x    %02x           %s\t\t| ", __cpu_reg.pc, op, str);
 		break;
 	case IMPLIED:
-		debug("$%04x    %02x           %s", __cpu_reg.pc, op, str);
+		debug_content("$%04x    %02x           %s\t\t| ", __cpu_reg.pc, op, str);
 		break;
 	case IMMEDIATE:
-		debug("$%04x    %02x %02x        %s #$%02x", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
+		debug_content("$%04x    %02x %02x        %s #$%02x\t| ", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
 		break;
 	case ABSOLUTE:
-		debug("$%04x    %02x %02x %02x     %s $%04x", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
+		debug_content("$%04x    %02x %02x %02x     %s $%04x\t| ", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
 		break;
 	case ZEROPAGE:
-		debug("$%04x    %02x %02x        %s $%02x", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
+		debug_content("$%04x    %02x %02x        %s $%02x\t\t| ", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
 		break;
 	case RELATIVE:
-		debug("$%04x    %02x %02x        %s $%02x", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
+		debug_content("$%04x    %02x %02x        %s $%02x\t\t| ", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
 		break;
 	case ABSOLUTEX:
-		debug("$%04x    %02x %02x %02x     %s $%04x,X", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
+		debug_content("$%04x    %02x %02x %02x     %s $%04x,X\t| ", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
 		break;
 	case ABSOLUTEY:
-		debug("$%04x    %02x %02x %02x     %s $%04x,Y", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
+		debug_content("$%04x    %02x %02x %02x     %s $%04x,Y\t| ", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
 		break;
 	case ZEROPAGEX:
-		debug("$%04x    %02x %02x        %s $%02x,X", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
+		debug_content("$%04x    %02x %02x        %s $%02x,X\t| ", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
 		break;
 	case ZEROPAGEY:
-		debug("$%04x    %02x %02x        %s $%02x,Y", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
+		debug_content("$%04x    %02x %02x        %s $%02x,Y\t| ", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
 		break;
 	case INDIRECT:
-		debug("$%04x    %02x %02x %02x     %s ($%04x)", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
+		debug_content("$%04x    %02x %02x %02x     %s ($%04x)\t| ", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
 		break;
 	case INDIRECTX:
-		debug("$%04x    %02x %02x        %s ($%02x,X)", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
+		debug_content("$%04x    %02x %02x        %s ($%02x,X)\t| ", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
 		break;
 	case INDIRECTY:
-		debug("$%04x    %02x %02x        %s ($%02x,Y)", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
+		debug_content("$%04x    %02x %02x        %s ($%02x,Y)\t| ", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
 		break;
 
 	default:
@@ -854,11 +875,14 @@ static int handle_op(struct instruction op) {
 	cycles_remaining = 0;
 
 	// 4. debug
+	debug_start();
 	debug_opcode(op.mode, op.str, op.code, uarg);
 
 
 	uint16_t pc = __cpu_reg.pc;
 	// 6. algo
+
+	__no_rw_debug = 0;
 	uint16_t result = op.fn(op.mode, uarg);
 	
 	// 5. increment pc
@@ -869,6 +893,8 @@ static int handle_op(struct instruction op) {
 	if (op.end)
 		op.end(result);
 
+
+	debug_end();
 	return true;
 
 }
@@ -920,6 +946,9 @@ int cpu_exec()
 
 	static int pipeline_flag_ready = true;
 	static uint8_t op = 0;
+
+	// disable readbus on opcode parsing
+	__no_rw_debug = 1;
 
 	// 1. read op
 	if (pipeline_flag_ready)
@@ -997,7 +1026,7 @@ int cpu_run(void (*waitFn)())
     timediff = tend.tv_nsec - tstart.tv_nsec;
     // assert(timediff < t);
     if (timediff > t) {
-      printf("[%s]TIME=%ldus >? %ldus\n", _op[readbus(__cpu_reg.pc)].str, timediff, t);
+    //   printf("[%s]TIME=%ldus >? %ldus\n", _op[readbus(__cpu_reg.pc)].str, timediff, t);
     }
 		quit = state == -1;
 	}

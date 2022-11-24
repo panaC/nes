@@ -323,7 +323,8 @@ int nes(struct s_ines_parsed ines)
  * ppu threading is necessary to catch event from cpu bus 
  * The PPU exposes eight memory-mapped registers to the CPU $2000 to $2007
  *
- * 
+ *  -- UPDATE -- 
+ * no threading in first phase
  *
  * */
 
