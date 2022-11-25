@@ -65,3 +65,42 @@ void sdl_quit()
   SDL_DestroyWindow(__win);
   SDL_Quit();
 }
+
+enum e_sdl_event sdl_processEvent() {
+  SDL_Event event;
+  enum e_sdl_event ret;
+
+  SDL_PollEvent(&event);
+  switch (event.type)
+  {
+  case SDL_QUIT:
+    return SDL_QUIT_EVENT;
+
+  case SDL_KEYDOWN:
+				switch (event.key.keysym.sym) {
+					case SDLK_LEFT:
+						return SDL_KD_MOVE_LEFT_EVENT;
+					case SDLK_RIGHT:
+						return SDL_KD_MOVE_RIGHT_EVENT;
+					case SDLK_DOWN:
+						return SDL_KD_MOVE_DOWN_EVENT;
+					case SDLK_UP:
+						return SDL_KD_MOVE_UP_EVENT;
+					case SDLK_RETURN:
+						return SDL_KD_RETURN_EVENT;
+          case SDLK_SPACE:
+            return SDL_KD_SPACE_EVENT;
+				}
+				break;
+
+  default:
+    // debug("UNKNOWN EVENT %d", event.type);
+    return SDL_NO_EVENT;
+  }
+
+  return SDL_NO_EVENT;
+}
+
+void sdl_delay() {
+  SDL_Delay(1000 / 60); // 60fps
+}

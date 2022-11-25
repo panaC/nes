@@ -109,7 +109,62 @@ Les étapes pour réussir à toujours être dans cette fenetre ?
 - Réduire le nombre d'appel de function
 - Réduire le nombre de callback dans read/write (possiblement supprimer l'option callback)
 - vérifier ce qui prends du temps et optimiser l'algo pour une instructions
-  - L'algo de l'instruction est éxectuter sur le dernier cycle et non durant le temps d'execution de l'instruction
+- L'algo de l'instruction est éxectuter sur le dernier cycle et non durant le temps d'execution de l'instruction
 
+
+----
+
+
+
+Thu Nov 24 11:33:07 CET 2022
+
+changement de cap, restons simple
+utilisation du processus main et pas de thread
+
+-> ressources pour comnuniquer entre process/thread
+  - kqueue : bsd/macos
+  - epoll : linux
+  - I/O completion list : win
+https://habr.com/en/post/600123/
+
+sinon utilisation des pipes https://linuxprograms.wordpress.com/2008/01/23/piping-in-threads
+
+Pour notre usage dans l'emulateur nes: on peut envisager plusieurs chose : 
+  - utiliser pipe entre thread pour dispatcher des events 
+    CPU -> vers nes system -> PPU
+  - condition variable avec variable globale partagées
+  - eventfd : spécifique à linux https://www.yangyang.cloud/blog/2018/11/09/worker-pool-with-eventfd/ https://www.yangyang.cloud/blog/2018/11/09/worker-pool-with-eventfd/
+
+----
+
+
+back to basic : supprimer thread
+
+dans la boucle principal : 
+  - observer event sdl
+  - lancer un tour de boucle opcode (cycle ? )
+  - lancer un tour ppu
+  - pause et contrôle du system ? debug sur la ligne de commande (enter : one step :> right arrow : continue )
+  - cadencement du systeme a la mise a jour graphique 
+      loop { loop { [ cpu ] -> [ ppu ] -> [ sdl new frame ] } endloop -> [ sdl event ] -> [ sdl delay 60fps] } endloop
+        => avec cet algo non respect de la frequence du cpu et du ppu, le cpu tourne à la vitesse du systeme jusqu'a afficher une image puis est mise en pause xms
+
+
+
+-- cleaning en cours
+ce que je dois faire : 
+
+- [x] peut-on ajouter ec in vim
+
+- [x] simplifier le cpu api et ajouter un init vers une fonctio read/write
+     - faire une seule et unique fonction
+     - UPDATE : le test ne fonctionne plus le breakpoint n'est jamais reached
+
+- [x] ajouter le bon vimrc
+
+-- [x] faire fonctionner snake
+ -- [] faire un premier makefile 
+
+ -- [] commencer a dev le ppu
 
 

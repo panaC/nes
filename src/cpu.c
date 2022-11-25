@@ -580,6 +580,8 @@ static int16_t jsr(enum e_addressMode mode, union u16 uarg) {
   union u16 pc = { .value = __cpu_reg.pc };
   pc.value += 3 - 1; // jsr size equal 3 minus one size of the rts opcode
 
+  debug("%x %x %x", pc.value, pc.msb, pc.lsb);
+
   writebus(0x01ff - __cpu_reg.sp, pc.msb);
   __cpu_reg.sp--;
   writebus(0x01ff - __cpu_reg.sp, pc.lsb);
@@ -936,6 +938,8 @@ enum e_cpu_code cpu_exec()
 
   // 3. handle debugging
   cpu_code = cpu_pc_assert(cpu_code);
+
+  debug("STATUS %d", cpu_code);
 
   return cpu_code;
 }

@@ -10,6 +10,10 @@
 
 int main(int argc, char **argv) {
   printf("hello nes\n");
+  if (argc == 2 && strcmp(argv[1], "snake") == 0) {
+    snake();
+    return 0;
+  }
 
   struct s_ines_parsed* ines = NULL;
   if (argc > 1) {
@@ -25,7 +29,6 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  // snake();
   int quit = nes(*ines);
   free(ines);
 

@@ -6,7 +6,7 @@
 #include "cpu.h"
 #include "sdl.h"
 
-#define debug(...) log_x(LOG_DEBUG, __VA_ARGS__)
+#define debug(...) 0;
 
 uint8_t rom[] = {
   0x20, 0x06, 0x06, 0x20, 0x38, 0x06, 0x20, 0x0d, 0x06, 0x20, 0x2a, 0x06, 0x60, 0xa9, 0x02, 0x85,
@@ -51,46 +51,6 @@ static void setPixelWithPitch(uint32_t pos, uint32_t color) {
   }
 }
 
-static t_snake_action sdl_processEvent() {
-  SDL_Event event;
-  t_snake_action ret;
-
-  SDL_PollEvent(&event);
-  switch (event.type)
-  {
-  case SDL_QUIT:
-    debug("QUIT EVENT");
-    return QUIT_EVENT;
-    break;
-
-  case SDL_KEYDOWN:
-				switch (event.key.keysym.sym) {
-					case SDLK_LEFT:
-						return MOVE_LEFT;
-						break;
-					case SDLK_RIGHT:
-						return MOVE_RIGHT;
-						break;
-					case SDLK_DOWN:
-						return MOVE_DOWN;
-						break;
-					case SDLK_UP:
-						return MOVE_UP;
-						break;
-					case SDLK_RETURN:
-						return PAUSE;
-						break;
-				}
-				break;
-
-  default:
-    // debug("UNKNOWN EVENT %d", event.type);
-    return NO_EVENT;
-  }
-
-  return NO_EVENT;
-}
-
 uint8_t bus_read_fe_rand(uint8_t value, uint32_t addr) {
   if (addr == 0xfe) {
     value =  rand() % 256;
@@ -116,35 +76,41 @@ uint8_t bus_write_2xx_screen(uint8_t value, uint32_t addr) {
   return value;
 }
 
+uint8_t mem[0x10000] = {0};
+uint8_t snake_readbus(uint32_t addr) {
+
+  uint8_t value = mem[addr];
+  value = bus_read_fe_rand(value, addr);
+  value = bus_read_ff_rand(value, addr);
+
+  if (addr >= START && addr < START + sizeof(rom))
+    value = rom[addr - START];
+
+  if (addr == 0xfffd)
+    value = 0x06;
+  if (addr == 0xfffc)
+    value = 0x00;
+
+  printf("SNAKE: r[%04x]=%02x\n", addr, value);
+
+  return value;
+}
+
+void snake_writebus(uint32_t addr, uint8_t value) {
+
+  value = bus_write_2xx_screen(value, addr);
+  mem[addr] = value;
+
+  printf("SNAKE: w[%04x]=%02x\n", addr, value);
+}
+
 void snake_init() {
 
-  /*
-   *
-   * TODO Fix snake
-   *
-   *
-  uint8_t *rawmem = (uint8_t *)malloc(MEM_SIZE);
-  bzero(rawmem, MEM_SIZE);
-  for (int i = 0; i < MEM_SIZE; i++) {
-    __cpu_memory[i] = rawmem + i;
-  }
+  cpu_readbus = &snake_readbus;
+  cpu_writebus = &snake_writebus;
 
-  for(int i = 0; i < sizeof(rom); i++) {
-    __cpu_memory[START + i] = rom + i;
-  }
+  setenv("BRK", "638", 1);
 
-  union u16 resetVector = {.value = START};
-
-  *__cpu_memory[0xfffc] = resetVector.lsb;
-  *__cpu_memory[0xfffd] = resetVector.msb;
-
-  */
-
-  // hexdump(*(__cpu_memory + START), 320);
-
-  cpu_write_on(&bus_write_2xx_screen);
-  cpu_read_on(&bus_read_fe_rand);
-  cpu_read_on(&bus_read_ff_rand);
 }
 
 void snake() {
@@ -156,27 +122,19 @@ void snake() {
   // 0x600 -> sizeof(rom) : rom
   // memory_size = 0x1000 : 16 * 256 : 4kB
 
-  SDL_Thread *thread;
-  thread = SDL_CreateThread(cpu_run, "CPUThread", (void *)&__pause);
-  if (!thread) {
-    log_error("CPUThread ERROR");
-    return ;
-  }
-
   sdl_init(SNAKE_WIDTH, SNAKE_HEIGHT);
   snake_init();
   cpu_init();
 
-  int quit = 0;
+  int pause = 0;
+  enum e_cpu_code status = 0;
 
-  while (quit != -1)
-  {
+  for (;;) {
 
     switch (sdl_processEvent())
     {
     case QUIT_EVENT:
-      quit = -1;
-      break;
+      goto end;
     case MOVE_DOWN:
       lastkeycode = 0x73;
       debug("MOVE DOWN");
@@ -194,7 +152,7 @@ void snake() {
       debug("MOVE RIGHT");
       break;
     case PAUSE:
-      __pause = !__pause;
+      pause = !pause;
       debug("PAUSE");
       break;
 
@@ -202,17 +160,21 @@ void snake() {
       break;
     }
 
-    SDL_Delay(1000 / 60); // 60fps
+    while (status != CPU_DEBUG_PC_BREAK || status != CPU_BREAK) {
+      status = cpu_exec();
+    }
+
+    if (status == CPU_BREAK)
+      break;
+    if (status == CPU_DEBUG_PC_BREAK)
+      status = CPU_INSTRUCTION_COMPLETE;
+
+    SDL_Delay(1000 / 10); // 10fps
     sdl_showRendering(rawPixel, SNAKE_WIDTH);
+
+    printf("HELLO");
   }
 
-  // hexdumpSnake(*(__cpu_memory + 0x200), 1024);
-
-  if (thread) {
-    SDL_DetachThread(thread);
-    thread = NULL;
-  }
-
+end:
   sdl_quit();
-
 }
