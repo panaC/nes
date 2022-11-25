@@ -68,6 +68,21 @@ enum e_addressMode {
   INDIRECTY,
 };
 
+typedef uint8_t (cpu_readbus_t)(uint32_t addr);
+typedef union u16 (cpu_readbus16_t)(uint32_t addr);
+typedef void (cpu_writebus_t)(uint32_t addr, uint8_t value);
+
+void cpu_init();
+void cpu_reset();
+void cpu_irq();
+enum e_cpu_code cpu_exec();
+void cpu_listing();
+
+extern cpu_readbus_t *cpu_readbus;
+extern cpu_readbus16_t *cpu_readbus16;
+extern cpu_writebus_t *cpu_writebus;
+
+// opcode instruction array
 typedef int16_t (*opfn)(enum e_addressMode mode, union u16 uarg);
 typedef void (*spfn)(int16_t value);
 
@@ -82,24 +97,8 @@ struct instruction {
   spfn end;
 };
 
-typedef uint8_t *t_mem;
-typedef uint8_t (*readwritefn)(uint8_t value, uint32_t addr);
+struct instruction _op[0x100];
 
-#define CPU_EVENT_BUS_FN_SIZE 16
-
-readwritefn cpu_read_on(readwritefn fn);
-readwritefn cpu_write_on(readwritefn fn);
-
-void cpu_init();
-void cpu_irq();
-enum e_cpu_code cpu_exec();
-void cpu_listing();
-
-uint8_t cpu_readbus(uint32_t addr);
-union u16 cpu_readbus16(uint32_t addr);
-void cpu_writebus(uint32_t addr, uint8_t value);
-
-// global static
-struct instruction _op[0xff];
+void cpu_init_op_tab();
 
 #endif

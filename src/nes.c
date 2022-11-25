@@ -68,7 +68,7 @@ uint8_t __ppu[9] = {0};
 uint8_t write_ppu_register_log(uint8_t value, uint32_t addr) {
 
   if (addr >= 0x2000 && addr < 0x2008) {
-    debug_content("wPPU[0x%04x]=0x%2x | ", addr, value);
+    // debug_content("wPPU[0x%04x]=0x%2x | ", addr, value);
     __ppu[addr - 0x2000] = value;
   }
   return value;
@@ -79,7 +79,7 @@ uint8_t read_ppu_register_log(uint8_t value, uint32_t addr) {
 
   if (addr >= 0x2000 && addr < 0x2008) {
     value = __ppu[addr - 0x2000];
-    debug_content("rPPU[0x%04x]=0x%02x | ", addr, value);
+    // debug_content("rPPU[0x%04x]=0x%02x | ", addr, value);
   }
 
   return value;
@@ -204,6 +204,33 @@ void mapper0(struct s_ines_parsed ines) {
   // fwrite(_prgrom, _prgrom_size * 0x4000, 1, write_ptr);
 }
 
+uint8_t nes_readbus(uint32_t addr) {
+
+  uint8_t value = 0;
+  
+  value = assert_memory(value, addr);
+  value = read_000_7ff(value, addr);
+  value = read_mirror_000_7ff(value, addr);
+  value = read_ppu_register_log(value, addr);
+  value = read_cartridge(value, addr);
+
+  // debug_content("r[0x%04x]=%02x | ", addr, value);
+  return value;
+}
+
+void nes_writebus(uint32_t addr, uint8_t value) {
+
+  value = assert_memory(value, addr);
+  value = write_000_7ff(value, addr);
+  value = write_mirror_000_7ff(value, addr);
+  value = write_ppu_register_log(value, addr);
+  value = write_mirror_ppu(value, addr);
+  value = write_catridge(value, addr);
+  value = write_apu_joy1_serial(value, addr);
+
+  // debug_content("w[0x%04x]=%02x", addr, value);
+}
+
 static void nes_init(struct s_ines_parsed ines) {
 
   uint32_t size = 0x800; // 2kb internal memory
@@ -219,26 +246,8 @@ static void nes_init(struct s_ines_parsed ines) {
   // https://github.com/christopherpow/nes-test-roms/blob/95d8f621ae55cee0d09b91519a8989ae0e64753b/cpu_dummy_reads/source/common/shell.inc#L157
   __ppu[2] = 0x80;
 
-  cpu_read_on(&assert_memory);
-  cpu_write_on(&assert_memory);
-
-  cpu_read_on(&read_000_7ff);
-  cpu_write_on(&write_000_7ff);
-
-  cpu_read_on(&read_mirror_000_7ff);
-  cpu_write_on(&write_mirror_000_7ff);
-
-  cpu_read_on(&read_ppu_register_log);
-  cpu_write_on(&write_ppu_register_log);
-
-  cpu_read_on(&read_mirror_ppu);
-  cpu_write_on(&write_mirror_ppu);
-
-  cpu_read_on(&read_cartridge);
-  cpu_write_on(&write_catridge);
-
-  cpu_write_on(&write_apu_joy1_serial);
-
+  cpu_readbus = &nes_readbus;
+  cpu_writebus = &nes_writebus;
   mapper0(ines);
 
 }

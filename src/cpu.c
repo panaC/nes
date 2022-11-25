@@ -19,21 +19,28 @@
 #  define debug(...) debug_start();debug_content(__VA_ARGS__);debug_end();
 #endif
 
+// extern CPU Variable
+cpu_readbus_t *cpu_readbus = NULL;
+cpu_readbus16_t *cpu_readbus16 = NULL;
+cpu_writebus_t *cpu_writebus = NULL;
+
+// local read/write bus variable function
+// init in cpu_init with assert on NULL;
+cpu_readbus_t *readbus = NULL;
+cpu_writebus_t *writebus = NULL;
+cpu_readbus16_t *readbus16 = NULL;
+
+
 /**
  * 6502 it vector
  *
  *
- * NMI       -> LSB:0xFFFA - MSB:0xFFFB
- * RESET     -> LSB:0xFFFC - MSB:0xFFFD
- * IRQ/BRK  -> LSB:0xFFFE - MSB:0xFFFF
+ * NMI        -> LSB:0xFFFA - MSB:0xFFFB
+ * RESET      -> LSB:0xFFFC - MSB:0xFFFD
+ * IRQ/BRK    -> LSB:0xFFFE - MSB:0xFFFF
  */
 
-readwritefn __bus_read_on_array[CPU_EVENT_BUS_FN_SIZE] = { NULL };
-size_t __bus_read_on_size = 0;
-readwritefn __bus_write_on_array[CPU_EVENT_BUS_FN_SIZE] = { NULL };
-size_t __bus_write_on_size = 0;
-
-struct instruction _op[0xff] = { 0 };
+struct instruction _op[0x100] = { 0 };
 
 t_registers __cpu_reg = {
   .pc = 0,
@@ -47,64 +54,8 @@ int __no_rw_debug = 0;
 int __debug_brk = 0;
 int __debug_assert_pc = 0;
 
-
-/**
- *
- * these 2 function are called from main process or whatever
- * but not from the cpu thread
- * so no need to mutex __bus_read_on_array !?
- *
- */
-readwritefn cpu_read_on(readwritefn fn) {
-  if (!fn) return NULL;
-  for (int i = 0; i < __bus_read_on_size; i++) {
-    if (fn == __bus_read_on_array[i]) return NULL;
-  }
-  __bus_read_on_array[__bus_read_on_size] = fn;
-  __bus_read_on_size++;
-
-  return fn;
-}
-
-readwritefn cpu_write_on(readwritefn fn) {
-  if (!fn) return NULL;
-  for (int i = 0; i < __bus_write_on_size; i++) {
-    if (fn == __bus_write_on_array[i]) return NULL;
-  }
-  __bus_write_on_array[__bus_write_on_size] = fn;
-  __bus_write_on_size++;
-
-  return fn;
-}
-
-static uint8_t readbus(uint32_t addr) {
-
-  static int loop = 0;
-  ++loop;
-  if (loop > 10) assert(0);
-
-  uint8_t value = 0;
-  for (int i = 0; i < __bus_read_on_size; i++) {
-    value = __bus_read_on_array[i](value, addr);
-  }
-
-  loop = 0;
-  if (!__no_rw_debug)
-    debug_content("r[0x%04x]=0x%02x | ", addr, value);
-  return value;
-}
-uint8_t cpu_readbus(uint32_t addr) {
-  return readbus(addr);
-}
-
-static union u16 readbus16(uint32_t addr) {
-  union u16 v = { .lsb = readbus(addr), .msb = readbus(addr + 1) };
-  if (!__no_rw_debug)
-    debug_content("r16[0x%04x]=0x%04x | ", addr, v.value);
-  return v;
-}
-union u16 cpu_readbus16(uint32_t addr) {
-  return readbus16(addr);
+static union u16 readbus16_default(uint32_t addr) {
+  return (union u16) { .lsb = readbus(addr), .msb = readbus(addr + 1) };
 }
 
 static uint8_t readbus_pc() {
@@ -113,24 +64,6 @@ static uint8_t readbus_pc() {
 
 static union u16 readbus16_pc() {
   return readbus16(__cpu_reg.pc + 1);
-}
-
-static void writebus(uint32_t addr, uint8_t value) {
-
-  static int loop = 0;
-  ++loop;
-  if (loop > 10) assert(0);
-
-  for (int i = 0; i < __bus_write_on_size; i++) {
-    value = __bus_write_on_array[i](value, addr);
-  }
-
-  loop = 0;
-  if (!__no_rw_debug)
-    debug_content("w[0x%04x]=%02x | ", addr, value);
-}
-void cpu_writebus(uint32_t addr, uint8_t value) {
-  return writebus(addr, value);
 }
 
 static void debug_opcode(enum e_addressMode mode, char* str, uint8_t op, union u16 arg) {
@@ -272,8 +205,6 @@ static union u16 read_arg(enum e_addressMode mode) {
 
   return (union u16) { .value = 0 };
 }
-
-
 
 static int16_t not_found() {
 
@@ -689,7 +620,7 @@ struct instruction tab[] = {
   {"ASL",    0x06,    ZEROPAGE,    2,  5,  0,  &asl,              &sp_zn},
   {"ASL",    0x16,    ZEROPAGEX,  2,  6,  0,  &asl,              &sp_zn},
   {"ASL",    0x0e,    ABSOLUTE,    3,  6,  0,  &asl,              &sp_zn},
-  {"ASL",    0x0e,    ABSOLUTEX,  3,  7,  0,  &asl,              &sp_zn},
+  {"ASL",    0x1e,    ABSOLUTEX,  3,  7,  0,  &asl,              &sp_zn},
 
   {"LSR",    0x4a,    ACCUMULATOR,1,  2,  0,  &lsr,              &sp_zn},
   {"LSR",    0x46,    ZEROPAGE,    2,  5,  0,  &lsr,              &sp_zn},
@@ -904,15 +835,33 @@ static int handle_op(struct instruction op) {
 
 }
 
-// https://www.pagetable.com/?p=410
-void cpu_init()
-{
-  for (int i = 0; i < 0xff; i++) {
+void cpu_init_op_tab() {
+  for (int i = 0; i < 0x100; i++) {
     _op[i] = (struct instruction){ "UNK", i, IMPLIED, 1, 1, 0, &not_found, NULL };
   }
   for (int i = 0; i < (sizeof(tab) / sizeof(struct instruction)); i++) {
     _op[tab[i].code] = tab[i];
   }
+}
+
+// https://www.pagetable.com/?p=410
+void cpu_init()
+{
+
+  if (!cpu_readbus16) {
+    readbus16 = &readbus16_default;
+  } else {
+    readbus16 = cpu_readbus16;
+  }
+
+  // assign read/write bus to local variable and assert it
+  // failed if not assigned before init
+  assert(cpu_readbus);
+  readbus = cpu_readbus;
+  assert(cpu_writebus);
+  writebus = cpu_writebus;
+
+  cpu_init_op_tab();
 
   // https://www.nesdev.org/wiki/CPU_power_up_state
   __cpu_reg.pc = readbus16(0xfffc).value;
@@ -927,8 +876,9 @@ void cpu_init()
     writebus(0x4010 + i, 16);
 
   char* env_brk = getenv("BRK");
-  __debug_brk = strcmp(env_brk, "") == 0 ? 0 : strtol(env_brk, NULL, 16);
-  __debug_assert_pc = strcmp(getenv("ASSERT_PC"), "1") == 0;
+  char* env_assert_pc = getenv("ASSERT_PC");
+  __debug_brk = env_brk ? (strcmp(env_brk, "") == 0 ? 0 : strtol(env_brk, NULL, 16)) : 0;
+  __debug_assert_pc = env_assert_pc ? strcmp(env_assert_pc, "1") == 0 : 0;
 }
 
 void cpu_irq()
@@ -944,7 +894,7 @@ void cpu_irq()
 }
 
 // global function
-void reset(t_registers* reg, t_mem* memory)
+void reset()
 {
   // https://www.pagetable.com/?p=410
   // TODO
