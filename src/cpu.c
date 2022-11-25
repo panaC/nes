@@ -152,48 +152,48 @@ static void debug_opcode(enum e_addressMode mode, char* str, uint8_t op, union u
 
   switch (mode)
   {
-  case ACCUMULATOR:
-    debug_content("$%04x    %02x           %s\t\t| ", __cpu_reg.pc, op, str);
-    break;
-  case IMPLIED:
-    debug_content("$%04x    %02x           %s\t\t| ", __cpu_reg.pc, op, str);
-    break;
-  case IMMEDIATE:
-    debug_content("$%04x    %02x %02x        %s #$%02x\t| ", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
-    break;
-  case ABSOLUTE:
-    debug_content("$%04x    %02x %02x %02x     %s $%04x\t| ", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
-    break;
-  case ZEROPAGE:
-    debug_content("$%04x    %02x %02x        %s $%02x\t\t| ", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
-    break;
-  case RELATIVE:
-    debug_content("$%04x    %02x %02x        %s $%02x\t\t| ", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
-    break;
-  case ABSOLUTEX:
-    debug_content("$%04x    %02x %02x %02x     %s $%04x,X\t| ", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
-    break;
-  case ABSOLUTEY:
-    debug_content("$%04x    %02x %02x %02x     %s $%04x,Y\t| ", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
-    break;
-  case ZEROPAGEX:
-    debug_content("$%04x    %02x %02x        %s $%02x,X\t| ", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
-    break;
-  case ZEROPAGEY:
-    debug_content("$%04x    %02x %02x        %s $%02x,Y\t| ", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
-    break;
-  case INDIRECT:
-    debug_content("$%04x    %02x %02x %02x     %s ($%04x)\t| ", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
-    break;
-  case INDIRECTX:
-    debug_content("$%04x    %02x %02x        %s ($%02x,X)\t| ", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
-    break;
-  case INDIRECTY:
-    debug_content("$%04x    %02x %02x        %s ($%02x,Y)\t| ", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
-    break;
+    case ACCUMULATOR:
+      debug_content("$%04x    %02x           %s\t\t| ", __cpu_reg.pc, op, str);
+      break;
+    case IMPLIED:
+      debug_content("$%04x    %02x           %s\t\t| ", __cpu_reg.pc, op, str);
+      break;
+    case IMMEDIATE:
+      debug_content("$%04x    %02x %02x        %s #$%02x\t| ", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
+      break;
+    case ABSOLUTE:
+      debug_content("$%04x    %02x %02x %02x     %s $%04x\t| ", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
+      break;
+    case ZEROPAGE:
+      debug_content("$%04x    %02x %02x        %s $%02x\t\t| ", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
+      break;
+    case RELATIVE:
+      debug_content("$%04x    %02x %02x        %s $%02x\t\t| ", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
+      break;
+    case ABSOLUTEX:
+      debug_content("$%04x    %02x %02x %02x     %s $%04x,X\t| ", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
+      break;
+    case ABSOLUTEY:
+      debug_content("$%04x    %02x %02x %02x     %s $%04x,Y\t| ", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
+      break;
+    case ZEROPAGEX:
+      debug_content("$%04x    %02x %02x        %s $%02x,X\t| ", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
+      break;
+    case ZEROPAGEY:
+      debug_content("$%04x    %02x %02x        %s $%02x,Y\t| ", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
+      break;
+    case INDIRECT:
+      debug_content("$%04x    %02x %02x %02x     %s ($%04x)\t| ", __cpu_reg.pc, op, arg.lsb, arg.msb, str, arg.value);
+      break;
+    case INDIRECTX:
+      debug_content("$%04x    %02x %02x        %s ($%02x,X)\t| ", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
+      break;
+    case INDIRECTY:
+      debug_content("$%04x    %02x %02x        %s ($%02x,Y)\t| ", __cpu_reg.pc, op, arg.lsb, str, arg.lsb);
+      break;
 
-  default:
-    break;
+    default:
+      break;
   }
 
 }
@@ -202,29 +202,29 @@ static uint32_t addressmode(enum e_addressMode mode, union u16 arg) {
 
   switch (mode)
   {
-  case ZEROPAGE:
-    return arg.lsb;
-  case ZEROPAGEX:
-    return (arg.lsb + __cpu_reg.x) % 256;
-  case ZEROPAGEY:
-    return (arg.lsb + __cpu_reg.y) % 256;
-  case ABSOLUTE:
-    return arg.value;
-  case ABSOLUTEX:
-    return arg.value + __cpu_reg.x;
-  case ABSOLUTEY:
-    return arg.value + __cpu_reg.y;
-  case INDIRECTX:
-    return readbus((arg.lsb + __cpu_reg.x) % 256) + readbus((arg.lsb + __cpu_reg.x + 1) % 256) * 256;
-  case INDIRECTY:
-    return readbus(arg.lsb) + readbus((arg.lsb + 1) % 256) * 256 + __cpu_reg.y;
+    case ZEROPAGE:
+      return arg.lsb;
+    case ZEROPAGEX:
+      return (arg.lsb + __cpu_reg.x) % 256;
+    case ZEROPAGEY:
+      return (arg.lsb + __cpu_reg.y) % 256;
+    case ABSOLUTE:
+      return arg.value;
+    case ABSOLUTEX:
+      return arg.value + __cpu_reg.x;
+    case ABSOLUTEY:
+      return arg.value + __cpu_reg.y;
+    case INDIRECTX:
+      return readbus((arg.lsb + __cpu_reg.x) % 256) + readbus((arg.lsb + __cpu_reg.x + 1) % 256) * 256;
+    case INDIRECTY:
+      return readbus(arg.lsb) + readbus((arg.lsb + 1) % 256) * 256 + __cpu_reg.y;
 
-  case ACCUMULATOR:
-  case IMPLIED:
-  case IMMEDIATE:
-  case INDIRECT:
-  case RELATIVE:
-    break;
+    case ACCUMULATOR:
+    case IMPLIED:
+    case IMMEDIATE:
+    case INDIRECT:
+    case RELATIVE:
+      break;
   }
 
   assert(0);
@@ -242,32 +242,32 @@ static union u16 read_arg(enum e_addressMode mode) {
 
   switch (mode)
   {
-  case ACCUMULATOR:
-    return (union u16) { .value = 0 };
-  case IMPLIED:
-    return (union u16) { .value = 0 };
-  case IMMEDIATE:
-    return (union u16) { .value = readbus_pc() };
-  case ABSOLUTE:
-    return readbus16_pc();
-  case ZEROPAGE:
-    return (union u16) { .value = readbus_pc() };
-  case RELATIVE:
-    return (union u16) { .value = readbus_pc() };
-  case ABSOLUTEX:
-    return readbus16_pc();
-  case ABSOLUTEY:
-    return readbus16_pc();
-  case ZEROPAGEX:
-    return (union u16) { .value = readbus_pc() };
-  case ZEROPAGEY:
-    return (union u16) { .value = readbus_pc() };
-  case INDIRECT:
-    return readbus16_pc();
-  case INDIRECTX:
-    return (union u16) { .value = readbus_pc() };
-  case INDIRECTY:
-    return (union u16) { .value = readbus_pc() };
+    case ACCUMULATOR:
+      return (union u16) { .value = 0 };
+    case IMPLIED:
+      return (union u16) { .value = 0 };
+    case IMMEDIATE:
+      return (union u16) { .value = readbus_pc() };
+    case ABSOLUTE:
+      return readbus16_pc();
+    case ZEROPAGE:
+      return (union u16) { .value = readbus_pc() };
+    case RELATIVE:
+      return (union u16) { .value = readbus_pc() };
+    case ABSOLUTEX:
+      return readbus16_pc();
+    case ABSOLUTEY:
+      return readbus16_pc();
+    case ZEROPAGEX:
+      return (union u16) { .value = readbus_pc() };
+    case ZEROPAGEY:
+      return (union u16) { .value = readbus_pc() };
+    case INDIRECT:
+      return readbus16_pc();
+    case INDIRECTX:
+      return (union u16) { .value = readbus_pc() };
+    case INDIRECTY:
+      return (union u16) { .value = readbus_pc() };
   }
 
   return (union u16) { .value = 0 };
