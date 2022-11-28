@@ -214,7 +214,7 @@ uint8_t nes_readbus(uint32_t addr) {
   value = read_ppu_register_log(value, addr);
   value = read_cartridge(value, addr);
 
-  // debug_content("r[0x%04x]=%02x | ", addr, value);
+  debug_content("r[0x%04x]=%02x | ", addr, value);
   return value;
 }
 
@@ -228,7 +228,7 @@ void nes_writebus(uint32_t addr, uint8_t value) {
   value = write_catridge(value, addr);
   value = write_apu_joy1_serial(value, addr);
 
-  // debug_content("w[0x%04x]=%02x", addr, value);
+  debug_content("w[0x%04x]=%02x | ", addr, value);
 }
 
 static void nes_init(struct s_ines_parsed ines) {
@@ -259,11 +259,35 @@ int nes(struct s_ines_parsed ines)
   cpu_init();
 
   int cycles = 0;
+  struct timespec t1 = {0};
+  struct timespec t2 = {0};
+  uint64_t time_elasped = 0;
+  uint64_t freq_delay = 1.0e9 / CPU_FREQ;
+
+  struct timespec sleep = {
+    .tv_sec = 0,
+    .tv_nsec = freq_delay,
+  };
 
   for (;;) {
+    debug_start();
+
+    clock_gettime(CLOCK_REALTIME, &t1);
+
     cycles = cpu_exec(NULL);
     if (cycles == -1)
       break;
+
+    // clock_gettime(CLOCK_MONOTONIC, &t2);
+    clock_gettime(CLOCK_REALTIME, &t2);
+
+    time_elasped = t2.tv_nsec - t1.tv_nsec < 0 ? (1.0e9 + (t2.tv_nsec - t1.tv_nsec)) : (t2.tv_nsec - t1.tv_nsec);
+    debug_content("TIME=%ld ", time_elasped);
+    assert(freq_delay - time_elasped > 0);
+    sleep.tv_nsec = freq_delay - time_elasped;
+    nanosleep(&sleep, NULL);
+
+    debug_end();
   }
 
   debug("QUIT with %d", cycles);
