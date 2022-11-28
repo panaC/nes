@@ -23,102 +23,46 @@
 #endif
 
 uint8_t __nes_ram[0x800] = {0};
-uint8_t write_000_7ff(uint8_t value, uint32_t addr) {
-
-  if (addr >= 0 && addr < 0x700) {
-    __nes_ram[addr] = value;
-  }
-
-  return value;
-}
-
-uint8_t read_000_7ff(uint8_t value, uint32_t addr) {
-
-  if (addr >= 0 && addr < 0x800) {
-    return __nes_ram[addr];
-  }
-  return value;
-}
-
-uint8_t write_mirror_000_7ff(uint8_t value, uint32_t addr) {
-
-  if (addr >= 0 && addr < 0x700) {
-
-    cpu_writebus(addr + 0x800, value);
-    cpu_writebus(addr + 0x1000, value);
-    cpu_writebus(addr + 0x1800, value);
-  }
-
-  return value;
-}
-
-uint8_t read_mirror_000_7ff(uint8_t value, uint32_t addr) {
-
-  uint32_t t[] = {0x800, 0x1000, 0x1800};
-  for (int i = 0; i < 3; i++) {
-    uint32_t addr2 = addr - t[i];
-    if (addr2 >= 0 && addr2 < 0x800) {
-      return cpu_readbus(addr2);
-    }
-  }
-  return value;
-}
-
 uint8_t __ppu[9] = {0};
-uint8_t write_ppu_register_log(uint8_t value, uint32_t addr) {
+uint8_t __apu[0x20] = {0};
 
-  if (addr >= 0x2000 && addr < 0x2008) {
-    // debug_content("wPPU[0x%04x]=0x%2x | ", addr, value);
-    __ppu[addr - 0x2000] = value;
-  }
-  return value;
+uint8_t *_prgrom = NULL;
+uint8_t _prgrom_size = 0; // in x * 16Kb
+int _prgrom_size_human_readable = 0;
+
+void mapper0(struct s_ines_parsed ines) {
+
+  _prgrom = ines.prgrom;
+  _prgrom_size = ines.ines->size_prgrom;
+  _prgrom_size_human_readable = _prgrom_size * 0x4000;
+
+  debug("PRGROM start at %d with size of %d", _prgrom - ines.ptr, _prgrom_size_human_readable);
+
 }
 
-int readingstatusregisteronce = 0;
-uint8_t read_ppu_register_log(uint8_t value, uint32_t addr) {
-
-  if (addr >= 0x2000 && addr < 0x2008) {
-    value = __ppu[addr - 0x2000];
-    // debug_content("rPPU[0x%04x]=0x%02x | ", addr, value);
-  }
-
-  return value;
-}
-
-uint8_t read_mirror_ppu(uint8_t value, uint32_t addr) {
-
-  if (addr >= 0x2008 && addr < 0x4000) {
-
-    uint32_t ref = addr - 0x2008; // offset
-    return cpu_readbus(0x2000 + (ref % 8));
-  }
-  return value;
-}
-
-uint8_t write_mirror_ppu(uint8_t value, uint32_t addr) {
-
-  if (addr >= 0x2008 && addr < 0x4000) {
-
-    uint32_t ref = addr - 0x2008; // offset
-    cpu_writebus(0x2000 + (ref % 8), value);
-  }
-  return value;
-}
-
-uint8_t write_apu_io_log(uint8_t value, uint32_t addr) {
+static uint8_t write_apu(uint32_t addr, uint8_t value) {
 
   if (addr >= 0x4000 && addr < 0x4020) {
-    debug("WRITE APU or IO registers 0x%x=%d", addr, value);
+    __apu[addr - 0x4000] = value;
   }
   return value;
 }
 
+static uint8_t read_apu(uint32_t addr, uint8_t value) {
+
+  if (addr >= 0x4000 && addr < 0x4020) {
+    return __apu[addr - 0x4000];
+  }
+  return value;
+}
+
+// TODO: Debug only for romtest
 int serialstateptr = -1; // 0-7 bit and -1 stop
 uint8_t serialvalue = 0;
 uint8_t serialbuf[0xffff] = {0};
 uint32_t serialbufptr = 0;
 FILE *write_ptr;
-uint8_t write_apu_joy1_serial(uint8_t value, uint32_t addr) {
+static uint8_t write_apu_joy1_serial(uint32_t addr, uint8_t value) {
 
   if (addr == 0x4016) {
 
@@ -145,88 +89,93 @@ uint8_t write_apu_joy1_serial(uint8_t value, uint32_t addr) {
   }
   return value;
 }
-/***
- *
- * SERIAL:
-01 01 01 01 01 01 01 01  01 01 00 00 01 00 01 00  |  ................
-00 00 00 01 00 00 00 01  00 00 01 00 00 01 00 00  |  ................
-01 00 00 01 01 00 00 01  00 00 00 00 00 01 01 00  |  ................
-00 01 00 00 00 00 00 01  01 00 00 01 00 00 01 00  |  ................
-00 01 01 00 00 01 00 00  00 00 00 00 01 00 00 01  |  ................
-00 01 00 01 01 00 01 01  00 01 00 01 00 01 00 01  |  ................
-01 01 00 01 00                                    |  .....
-*/
 
-uint8_t *_prgrom = NULL;
-uint8_t _prgrom_size = 0; // in x * 16Kb
-uint8_t read_cartridge(uint8_t value, uint32_t addr) {
+static uint8_t read_cartridge(uint32_t addr, uint8_t value) {
 
-  if (addr >= 0x8000 && addr <= 0xffff) {
-    uint32_t ref = addr - 0x8000;
-    // return _prgrom[ref % (16384 * _prgrom_size)];
-    return _prgrom[ref];
+  uint32_t addr_offset = addr - 0x8000;
+
+  if (addr >= 0x8000 && addr <= 0xffff && addr_offset < _prgrom_size_human_readable) {
+    return _prgrom[addr_offset];
   } else if (addr >= 0x4020) {
-    debug("READ Unknown Cartridge Space 0x%x=%d", addr, value);
+    debug_content("READ Unknown Cartridge Space with a size of %x ", _prgrom_size_human_readable);
   }
   return value;
 }
 
-uint8_t write_catridge(uint8_t value, uint32_t addr) {
+static uint8_t write_catridge(uint32_t addr, uint8_t value) {
   if (addr >= 0x8000 && addr <= 0xffff) {
-    debug("WRITE to Cartridge Space WHY ? 0x%x=%d", addr, value);
+    debug_content("WRITE to Cartridge Space WHY ?");
     // assert(0); // error read only
   } else if (addr >= 0x4020) {
-    debug("WRITE Unknown Cartridge Space 0x%x=%d", addr, value);
+    debug_content("WRITE Unknown Cartridge Space");
     // assert(0); // Read only ?
   }
   return value;
 }
 
-uint8_t assert_memory(uint8_t value, uint32_t addr) {
+static uint8_t read_000_7ff(uint32_t addr, uint8_t value) {
 
-  assert(addr < MEM_SIZE);
+  uint32_t addr_array[] = {0, 0x800, 0x1000, 0x1800};
+  uint32_t addr_offset = 0;
+  for (int i = 0; i < sizeof(addr_array); i++) {
+    addr_offset = addr - addr_array[i];
+    if (addr_offset >= 0 && addr_offset < 0x800) {
+      return __nes_ram[addr_offset];
+    }
+  }
   return value;
 }
 
-void mapper0(struct s_ines_parsed ines) {
+static uint8_t write_000_7ff(uint32_t addr, uint8_t value) {
 
-  _prgrom = ines.prgrom;
-  _prgrom_size = ines.ines->size_prgrom;
+  if (addr >= 0 && addr < 0x2000) {
+    __nes_ram[addr % 0x800] = value;
+  }
+  return value;
+}
 
-  debug("PRGROM start at %d with size of %d", _prgrom - ines.ptr, _prgrom_size * 0x4000);
+static uint8_t read_ppu(uint32_t addr, uint8_t value) {
 
-  // hexdump(_prgrom, _prgrom_size * 0x4000);
+  uint32_t addr_offset = 0;
+  if (addr >= 0x2000 && addr < 0x4000) {
+    addr_offset = (addr - 0x2000) % 8;
+    value = __ppu[0x2000 + addr_offset];
+  }
+  return value;
+}
 
-  // FILE *write_ptr;
-
-  // write_ptr = fopen("bump.bin","wb");  // w for write, b for binary
-
-  // fwrite(_prgrom, _prgrom_size * 0x4000, 1, write_ptr);
+static uint8_t write_ppu(uint32_t addr, uint8_t value) {
+  uint32_t addr_offset = 0;
+  if (addr >= 0x2000 && addr < 0x4000) {
+    addr_offset = (addr - 0x2000) % 8;
+    __ppu[0x2000 + addr_offset] = value;
+  }
+  return value;
 }
 
 uint8_t nes_readbus(uint32_t addr) {
 
   uint8_t value = 0;
-  
-  value = assert_memory(value, addr);
-  value = read_000_7ff(value, addr);
-  value = read_mirror_000_7ff(value, addr);
-  value = read_ppu_register_log(value, addr);
-  value = read_cartridge(value, addr);
+
+  assert(addr < MEM_SIZE);
+
+  value = read_000_7ff(addr, value);
+  value = read_ppu(addr, value);
+  value = read_apu(addr, value);
+  value = read_cartridge(addr, value);
 
   debug_content("r[0x%04x]=%02x | ", addr, value);
   return value;
 }
 
 void nes_writebus(uint32_t addr, uint8_t value) {
+  assert(addr < MEM_SIZE);
 
-  value = assert_memory(value, addr);
-  value = write_000_7ff(value, addr);
-  value = write_mirror_000_7ff(value, addr);
-  value = write_ppu_register_log(value, addr);
-  value = write_mirror_ppu(value, addr);
-  value = write_catridge(value, addr);
-  value = write_apu_joy1_serial(value, addr);
+  value = write_000_7ff(addr, value);
+  value = write_ppu(addr, value);
+  value = write_apu_joy1_serial(addr, value);
+  value = write_apu(addr, value);
+  value = write_catridge(addr, value);
 
   debug_content("w[0x%04x]=%02x | ", addr, value);
 }
