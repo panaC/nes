@@ -11,14 +11,6 @@
 
 #define MEM_SIZE 65536 // 64KB // 2 ^16 // 65536
 
-enum e_cpu_code {
-  CPU_INSTRUCTION_IN_PROGRESS = 0,
-  CPU_INSTRUCTION_COMPLETE = 1,
-  CPU_DEBUG_PC_ASSERT = 2,
-  CPU_DEBUG_PC_BREAK = 3,
-  CPU_BREAK = 255,
-};
-
 union u_p {
 
   uint8_t value;
@@ -75,7 +67,7 @@ typedef void (cpu_writebus_t)(uint32_t addr, uint8_t value);
 void cpu_init();
 void cpu_reset();
 void cpu_irq();
-enum e_cpu_code cpu_exec();
+int cpu_exec(uint16_t* pc);
 void cpu_listing();
 
 extern cpu_readbus_t *cpu_readbus;

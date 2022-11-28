@@ -29,6 +29,7 @@ int main(int argc, char **argv) {
     return 0;
   }
 
+
   int quit = nes(*ines);
   free(ines);
 

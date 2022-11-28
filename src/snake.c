@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <time.h>
+#include <assert.h>
 #include "snake.h"
 #include "stdint.h"
 #include "utils.h"
@@ -6,7 +8,21 @@
 #include "cpu.h"
 #include "sdl.h"
 
-#define debug(...) 0;
+#ifndef debug_content_SNAKE
+#  define debug_content_SNAKE
+#endif
+
+#ifndef debug_content_SNAKE
+#  define debug(...) 0;
+#  define debug_start() 0;
+#  define debug_content(...) 0;
+#  define debug_end() 0;
+#else
+#  define debug_start() fprintf(stdout, "SNAKE: ");
+#  define debug_content(...) fprintf(stdout, __VA_ARGS__);
+#  define debug_end() fprintf(stdout, "\n");
+#  define debug(...) debug_content_start();debug_content_content(__VA_ARGS__);debug_content_end();
+#endif
 
 uint8_t rom[] = {
   0x20, 0x06, 0x06, 0x20, 0x38, 0x06, 0x20, 0x0d, 0x06, 0x20, 0x2a, 0x06, 0x60, 0xa9, 0x02, 0x85,
@@ -54,7 +70,7 @@ static void setPixelWithPitch(uint32_t pos, uint32_t color) {
 uint8_t bus_read_fe_rand(uint8_t value, uint32_t addr) {
   if (addr == 0xfe) {
     value =  rand() % 256;
-    debug("BUS: rand value %d", value);
+    debug_content("BUS: rand value %d | ", value);
   }
   return value;
 }
@@ -62,7 +78,7 @@ uint8_t bus_read_fe_rand(uint8_t value, uint32_t addr) {
 uint8_t bus_read_ff_rand(uint8_t value, uint32_t addr) {
   if (addr == 0xff) {
     value = lastkeycode;
-    debug("BUS: last key %d", value);
+    debug_content("BUS: last key %d | ", value);
   }
   return value;
 }
@@ -71,7 +87,7 @@ uint8_t bus_write_2xx_screen(uint8_t value, uint32_t addr) {
   if (addr >= 0x200 && addr < 0x600) {
     // fill a rect at address to the screen
     setPixelWithPitch(addr - 0x200, value ? 0xffffffff : 0);
-    debug("SET PIXEL X=%d Y=%d", (addr-0x200) % 32, (addr-0x200) / 32);
+    debug_content("SET PIXEL X=%d Y=%d | ", (addr-0x200) % 32, (addr-0x200) / 32);
   }
   return value;
 }
@@ -91,7 +107,7 @@ uint8_t snake_readbus(uint32_t addr) {
   if (addr == 0xfffc)
     value = 0x00;
 
-  printf("SNAKE: r[%04x]=%02x\n", addr, value);
+  debug_content("r[%04x]=%02x | ", addr, value);
 
   return value;
 }
@@ -101,16 +117,13 @@ void snake_writebus(uint32_t addr, uint8_t value) {
   value = bus_write_2xx_screen(value, addr);
   mem[addr] = value;
 
-  printf("SNAKE: w[%04x]=%02x\n", addr, value);
+  debug_content("w[%04x]=%02x | ", addr, value);
 }
 
 void snake_init() {
 
   cpu_readbus = &snake_readbus;
   cpu_writebus = &snake_writebus;
-
-  setenv("BRK", "638", 1);
-
 }
 
 void snake() {
@@ -126,53 +139,79 @@ void snake() {
   snake_init();
   cpu_init();
 
+  struct timespec t1 = {0};
+  struct timespec t2 = {0};
+  uint64_t time_elasped = 0;
+  uint64_t freq_delay = 1.0e9 / (1000 * 10);
+
+  struct timespec sleep = {
+    .tv_sec = 0,
+    .tv_nsec = freq_delay,
+  };
+
   int pause = 0;
-  enum e_cpu_code status = 0;
+  int cycles;
+  uint16_t pc;
 
   for (;;) {
 
+    debug_start();
+
     switch (sdl_processEvent())
     {
-    case QUIT_EVENT:
+    case SDL_QUIT_EVENT:
       goto end;
-    case MOVE_DOWN:
+    case SDL_KD_MOVE_DOWN_EVENT:
       lastkeycode = 0x73;
-      debug("MOVE DOWN");
+      debug_content("MOVE DOWN");
       break;
-    case MOVE_UP:
+    case SDL_KD_MOVE_UP_EVENT:
       lastkeycode = 0x77;
-      debug("MOVE UP");
+      debug_content("MOVE UP");
       break;
-    case MOVE_LEFT:
+    case SDL_KD_MOVE_LEFT_EVENT:
       lastkeycode = 0x61;
-      debug("MOVE LEFT");
+      debug_content("MOVE LEFT");
       break;
-    case MOVE_RIGHT:
+    case SDL_KD_MOVE_RIGHT_EVENT:
       lastkeycode = 0x64;
-      debug("MOVE RIGHT");
+      debug_content("MOVE RIGHT");
       break;
-    case PAUSE:
+    case SDL_KD_SPACE_EVENT:
       pause = !pause;
-      debug("PAUSE");
+      debug_content("PAUSE");
       break;
 
     default:
       break;
     }
 
-    while (status != CPU_DEBUG_PC_BREAK || status != CPU_BREAK) {
-      status = cpu_exec();
+    if (pause) {
+      SDL_Delay(100);
+      continue;
     }
 
-    if (status == CPU_BREAK)
+    clock_gettime(CLOCK_REALTIME, &t1);
+
+    cycles = cpu_exec(&pc);
+    if (cycles == -1)
       break;
-    if (status == CPU_DEBUG_PC_BREAK)
-      status = CPU_INSTRUCTION_COMPLETE;
 
-    SDL_Delay(1000 / 10); // 10fps
-    sdl_showRendering(rawPixel, SNAKE_WIDTH);
+    // clock_gettime(CLOCK_MONOTONIC, &t2);
+    clock_gettime(CLOCK_REALTIME, &t2);
+    
+    time_elasped = t2.tv_nsec - t1.tv_nsec < 0 ? (1.0e9 + (t2.tv_nsec - t1.tv_nsec)) : (t2.tv_nsec - t1.tv_nsec);
+    debug_content("TIME=%ld ", time_elasped);
+    assert(freq_delay - time_elasped > 0);
+    sleep.tv_nsec = freq_delay - time_elasped;
+    nanosleep(&sleep, NULL);
 
-    printf("HELLO");
+    if (pc == 0x638) {
+      sdl_showRendering(rawPixel, SNAKE_WIDTH);
+      debug_content("SHOW RENDERING");
+    }
+
+    debug_end();
   }
 
 end:

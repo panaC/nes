@@ -7,11 +7,14 @@
 #include "cpu.h"
 
 #ifndef DEBUG_CPU
-#  define DEBUG_CPU 1
+#  define DEBUG_CPU
 #endif
 
 #ifndef DEBUG_CPU
 #  define debug(...) 0;
+#  define debug_start() 0;
+#  define debug_content(...) 0;
+#  define debug_end() 0;
 #else
 #  define debug_start() fprintf(stdout, "CPU: ");
 #  define debug_content(...) fprintf(stdout, __VA_ARGS__);
@@ -49,10 +52,6 @@ t_registers __cpu_reg = {
   .a = 0,
   .x = 0,
   .y = 0 };
-
-int __no_rw_debug = 0;
-int __debug_brk = 0;
-int __debug_assert_pc = 0;
 
 static union u16 readbus16_default(uint32_t addr) {
   return (union u16) { .lsb = readbus(addr), .msb = readbus(addr + 1) };
@@ -580,8 +579,6 @@ static int16_t jsr(enum e_addressMode mode, union u16 uarg) {
   union u16 pc = { .value = __cpu_reg.pc };
   pc.value += 3 - 1; // jsr size equal 3 minus one size of the rts opcode
 
-  debug("%x %x %x", pc.value, pc.msb, pc.lsb);
-
   writebus(0x01ff - __cpu_reg.sp, pc.msb);
   __cpu_reg.sp--;
   writebus(0x01ff - __cpu_reg.sp, pc.lsb);
@@ -786,54 +783,45 @@ struct instruction tab[] = {
  *
  * return boolean when instruction completed
  */
-static int handle_op(struct instruction op) {
+static int handle_op(struct instruction op, int cycles) {
 
-  static int cycles_remaining = 0;
   static union u16 uarg = (union u16){ .value = 0 };
 
-  if (cycles_remaining > 1) {
-    cycles_remaining--;
-    return 0;
-  } else if (cycles_remaining == 0) {
-    // 1. read the arg in function of addressMode
+  // start to assign cycles
+  if (cycles == 0) {
 
+    cycles = op.cycles;
+    // 1. read the arg in function of addressMode
     uarg = read_arg(op.mode);
 
     // 2. page crossed
     if (op.crossed) {
       if (uarg.lsb + __cpu_reg.x > 0xff) {
-        op.cycles++;
+        cycles++;
       }
     }
-
-    // 3. cycles
-    cycles_remaining = op.cycles - 1;
-    return 0;
   }
-  cycles_remaining = 0;
+
+  // if remains only one cycle lets execute op function
+  if (cycles > 1)
+    return cycles - 1;
 
   // 4. debug
-  debug_start();
   debug_opcode(op.mode, op.str, op.code, uarg);
 
-
-  uint16_t pc = __cpu_reg.pc;
   // 6. algo
-
-  __no_rw_debug = 0; // enable debug r/w
   uint16_t result = op.fn(op.mode, uarg);
 
   // 5. increment pc
-  if (strcmp(op.str, "JMP") != 0 && strcmp(op.str, "JSR") != 0) // jmp and jsr jump to a specific location
+  // jmp and jsr doesn't handle op.size in pc computation
+  if (strcmp(op.str, "JMP") != 0 && strcmp(op.str, "JSR") != 0)
     __cpu_reg.pc += op.size;
 
   // 7. set to registers Z & N
   if (op.end)
     op.end(result);
 
-
-  debug_end();
-  return 1;
+  return 0; // 
 
 }
 
@@ -876,11 +864,6 @@ void cpu_init()
     writebus(0x4000 + i, 16);
   for (int i = 0; i <= 0x3; i++)
     writebus(0x4010 + i, 16);
-
-  char* env_brk = getenv("BRK");
-  char* env_assert_pc = getenv("ASSERT_PC");
-  __debug_brk = env_brk ? (strcmp(env_brk, "") == 0 ? 0 : strtol(env_brk, NULL, 16)) : 0;
-  __debug_assert_pc = env_assert_pc ? strcmp(env_assert_pc, "1") == 0 : 0;
 }
 
 void cpu_irq()
@@ -902,44 +885,31 @@ void reset()
   // TODO
 }
 
-static int cpu_pc_assert(enum e_cpu_code code) {
-
-  if (__cpu_reg.pc == __debug_brk) {
-    return __debug_assert_pc ? CPU_DEBUG_PC_ASSERT : CPU_DEBUG_PC_BREAK;
-  }
-  return code;
-}
-
-enum e_cpu_code cpu_exec()
+int cpu_exec(uint16_t *pc)
 {
-
-  static enum e_cpu_code cpu_code = CPU_INSTRUCTION_COMPLETE;
   static uint8_t op = 0;
-
-  // disable readbus on opcode parsing
-  __no_rw_debug = 1;
+  int op_status = 0;
+  int cycles = 0;
 
   // 1. read op
-  if (cpu_code == CPU_INSTRUCTION_COMPLETE)
-    op = readbus(__cpu_reg.pc);
+  op = readbus(__cpu_reg.pc);
+  if (pc)
+    *pc = __cpu_reg.pc;
 
-#ifdef DEBUG_CPU
+// #ifdef DEBUG_CPU
   if (op == 0)
   {
     // break;
     debug("DEBUG_CPU BREAK");
-    cpu_code = CPU_INSTRUCTION_COMPLETE;
-    return CPU_BREAK;
+    return -1;
   }
-#endif
+// #endif
 
   // 2. handle op pipeline
-  cpu_code = handle_op(_op[op]);
+  do {
+    cycles = handle_op(_op[op], cycles);
+  } while (cycles > 0);
 
-  // 3. handle debugging
-  cpu_code = cpu_pc_assert(cpu_code);
 
-  debug("STATUS %d", cpu_code);
-
-  return cpu_code;
+  return _op[op].cycles;
 }

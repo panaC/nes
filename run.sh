@@ -1,7 +1,7 @@
 
 if [[ `uname` -eq 'Darwin' ]]; then
 
-  gcc -g -DDEBUG_CPU -DCPU_FREQ="(1789773)" -I/usr/local/include src/main.c src/snake.c src/cpu.c src/utils.c src/parser.c src/sdl.c src/nes.c src/listing.c src/clock.c -lSDL2-2.0.0 -lpthread -o nes && ./nes $@
+  gcc -g  -DCPU_FREQ="(1789773)" -I/usr/local/include src/main.c src/snake.c src/cpu.c src/utils.c src/parser.c src/sdl.c src/nes.c src/listing.c src/clock.c -lSDL2-2.0.0 -lpthread -o nes && ./nes $@
 
 
 else

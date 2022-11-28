@@ -163,6 +163,7 @@ ce que je dois faire :
 - [x] ajouter le bon vimrc
 
 -- [x] faire fonctionner snake
+
  -- [] faire un premier makefile 
 
  -- [] commencer a dev le ppu

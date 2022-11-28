@@ -258,15 +258,16 @@ int nes(struct s_ines_parsed ines)
   nes_init(ines);
   cpu_init();
 
-  enum e_cpu_code cpu_code = 0;
+  int cycles = 0;
 
   for (;;) {
-    cpu_code = cpu_exec();
-    if (cpu_code > 1) break;
+    cycles = cpu_exec(NULL);
+    if (cycles == -1)
+      break;
   }
 
-  debug("QUIT with %d", cpu_code);
-  return cpu_code;
+  debug("QUIT with %d", cycles);
+  return cycles;
 }
 
 /**
