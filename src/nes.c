@@ -1,13 +1,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <time.h>
 #include <strings.h>
 #include <assert.h>
 #include "nes.h"
 #include "cpu.h"
 #include "parser.h"
 #include "utils.h"
-#include "clock.h"
 
 #ifndef DEBUG_NES
 #	define DEBUG_NES 1
