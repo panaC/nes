@@ -105,3 +105,8 @@ http://skilldrick.github.io/easy6502/#snake
 === Carry and Overflow flags explanations ===
 http://www.6502.org/tutorials/vflag.html
 
+=== programming ===
+https://www.middle-engine.com/blog/posts/2020/06/23/programming-the-nes-the-6502-in-detail
+http://archive.6502.org/books/mcs6500_family_programming_manual.pdf
+
+
